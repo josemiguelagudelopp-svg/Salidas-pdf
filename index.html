@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de PDF y Subida a Supabase Storage</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js para renderizar -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- pdf-lib para modificar el PDF y estampar los textos físicamente -->
+    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        .draggable-text {
+            touch-action: none;
+            cursor: move;
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Editor de PDF Interactivo con URL</h1>
+
+        <!-- Subida de PDF -->
+        <div class="mb-6 p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Sube tu archivo PDF:</label>
+            <input type="file" id="file-input" accept="application/pdf" class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100 cursor-pointer">
+        </div>
+
+        <!-- Formulario de Textos -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Texto Apartado 1</label>
+                <input type="text" id="input-1" value="Texto 1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Texto Apartado 2</label>
+                <input type="text" id="input-2" value="Texto 2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Texto Apartado 3</label>
+                <input type="text" id="input-3" value="Texto 3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2">
+            </div>
+        </div>
+
+        <!-- Contenedor del PDF -->
+        <div class="relative inline-block border border-gray-300 rounded-lg overflow-hidden bg-gray-50 mb-6 max-w-full overflow-x-auto" id="pdf-container">
+            <canvas id="pdf-canvas" class="block mx-auto"></canvas>
+            
+            <div id="drag-1" class="draggable-text absolute bg-blue-500/80 text-white px-2 py-1 rounded text-sm shadow hidden" style="left: 50px; top: 50px;">Texto 1</div>
+            <div id="drag-2" class="draggable-text absolute bg-green-500/80 text-white px-2 py-1 rounded text-sm shadow hidden" style="left: 50px; top: 100px;">Texto 2</div>
+            <div id="drag-3" class="draggable-text absolute bg-purple-500/80 text-white px-2 py-1 rounded text-sm shadow hidden" style="left: 50px; top: 150px;">Texto 3</div>
+        </div>
+
+        <!-- Botón Guardar -->
+        <div>
+            <button id="btn-guardar" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow transition">
+                Generar PDF, Subir y Guardar URL
+            </button>
+        </div>
+
+        <!-- Resultado de la URL -->
+        <div id="resultado-url" class="mt-4 hidden p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p class="text-sm font-medium text-green-800">¡PDF guardado con éxito!</p>
+            <a id="link-pdf" href="#" target="_blank" class="text-blue-600 underline text-sm break-all">Ver PDF Online</a>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://obcwirxjvypxdpxudyqu.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_nFUde6igy8iYfKScAMFhKQ_K1e7ot-d';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        let archivoOriginalArrayBuffer = null;
+        let nombreArchivoActual = '';
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 1. Cargar PDF localmente
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file || file.type !== 'application/pdf') {
+                alert('Por favor selecciona un archivo PDF válido.');
+                return;
+            }
+
+            nombreArchivoActual = file.name;
+            const fileReader = new FileReader();
+
+            fileReader.onload = function() {
+                // Guardamos el buffer original limpio
+                const rawBuffer = this.result;
+                
+                // Creamos una copia exacta (clon) para evitar que PDF.js invalide el buffer original
+                archivoOriginalArrayBuffer = rawBuffer.slice(0);
+
+                // Para renderizar en pantalla pasamos otra copia a PDF.js
+                const typedarray = new Uint8Array(rawBuffer.slice(0));
+
+                pdfjsLib.getDocument(typedarray).promise.then(pdfDoc => {
+                    return pdfDoc.getPage(1);
+                }).then(page => {
+                    const renderViewport = page.getViewport({ scale: 1.2 });
+                    canvas.height = renderViewport.height;
+                    canvas.width = renderViewport.width;
+                    
+                    page.render({ canvasContext: ctx, viewport: renderViewport });
+                    document.querySelectorAll('.draggable-text').forEach(el => el.classList.remove('hidden'));
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+
+        // 2. Sincronizar inputs
+        for (let i = 1; i <= 3; i++) {
+            const input = document.getElementById(`input-${i}`);
+            const label = document.getElementById(`drag-${i}`);
+            input.addEventListener('input', (e) => {
+                label.textContent = e.target.value || `Texto ${i}`;
+            });
+        }
+
+        // 3. Arrastre táctil y de mouse
+        document.querySelectorAll('.draggable-text').forEach(el => {
+            let isDragging = false;
+            let startX, startY, initialX, initialY;
+
+            el.addEventListener('pointerdown', (e) => {
+                isDragging = true;
+                el.setPointerCapture(e.pointerId);
+                initialX = el.offsetLeft;
+                initialY = el.offsetTop;
+                startX = e.clientX;
+                startY = e.clientY;
+            });
+
+            el.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                el.style.left = `${initialX + (e.clientX - startX)}px`;
+                el.style.top = `${initialY + (e.clientY - startY)}px`;
+            });
+
+            el.addEventListener('pointerup', (e) => {
+                isDragging = false;
+                el.releasePointerCapture(e.pointerId);
+            });
+        });
+
+        // 4. Modificar PDF físicamente con pdf-lib, subir a Supabase y guardar URL
+        document.getElementById('btn-guardar').addEventListener('click', async () => {
+            if (!archivoOriginalArrayBuffer) {
+                alert('Por favor sube un archivo PDF primero.');
+                return;
+            }
+
+            try {
+                // Volvemos a clonar el buffer por si el usuario decide guardar varias veces seguidas
+                const bufferParaEditar = archivoOriginalArrayBuffer.slice(0);
+
+                // Cargar el PDF con pdf-lib
+                const pdfDoc = await PDFLib.PDFDocument.load(bufferParaEditar);
+                const pages = pdfDoc.getPages();
+                const firstPage = pages[0];
+                const { width: pdfWidth, height: pdfHeight } = firstPage.getSize();
+
+                const canvasClientWidth = canvas.width;
+                const canvasClientHeight = canvas.height;
+
+                function calcularCoordenadasPDF(elemId) {
+                    const el = document.getElementById(elemId);
+                    const leftPx = parseInt(el.style.left);
+                    const topPx = parseInt(el.style.top);
+
+                    const x = (leftPx / canvasClientWidth) * pdfWidth;
+                    const y = pdfHeight - ((topPx / canvasClientHeight) * pdfHeight) - 10;
+
+                    return { x, y };
+                }
+
+                const text1 = document.getElementById('input-1').value;
+                const pos1 = calcularCoordenadasPDF('drag-1');
+                const text2 = document.getElementById('input-2').value;
+                const pos2 = calcularCoordenadasPDF('drag-2');
+                const text3 = document.getElementById('input-3').value;
+                const pos3 = calcularCoordenadasPDF('drag-3');
+
+                // Estampar textos en la primera página
+                firstPage.drawText(text1, { x: pos1.x, y: pos1.y, size: 12 });
+                firstPage.drawText(text2, { x: pos2.x, y: pos2.y, size: 12 });
+                firstPage.drawText(text3, { x: pos3.x, y: pos3.y, size: 12 });
+
+                const pdfBytes = await pdfDoc.save();
+                const blobPDF = new Blob([pdfBytes], { type: 'application/pdf' });
+
+                const fileName = `editado_${Date.now()}_${nombreArchivoActual}`;
+
+                // Subir a Supabase Storage (Bucket 'pdfs')
+                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    .from('pdfs')
+                    .upload(fileName, blobPDF, {
+                        contentType: 'application/pdf',
+                        upsert: true
+                    });
+
+                if (uploadError) throw uploadError;
+
+                // Obtener URL pública
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('pdfs')
+                    .getPublicUrl(fileName);
+
+                const urlPublica = publicUrlData.publicUrl;
+
+                // Guardar en tabla de base de datos
+                const { error: dbError } = await supabaseClient
+                    .from('documentos_editados')
+                    .insert([{
+                        nombre_archivo: nombreArchivoActual,
+                        url_pdf: urlPublica,
+                        texto_apartado_1: text1,
+                        texto_apartado_2: text2,
+                        texto_apartado_3: text3
+                    }]);
+
+                if (dbError) throw dbError;
+
+                document.getElementById('link-pdf').href = urlPublica;
+                document.getElementById('link-pdf').textContent = urlPublica;
+                document.getElementById('resultado-url').classList.remove('hidden');
+                alert('¡PDF generado, subido al Storage y URL guardada con éxito!');
+
+            } catch (error) {
+                alert('Hubo un error: ' + error.message);
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
