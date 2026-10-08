@@ -21,7 +21,6 @@
             background: transparent;
             border: 2px dashed rgba(59, 130, 246, 0.8);
         }
-        /* Contenedor adaptativo para celulares */
         #pdf-container {
             width: 100%;
             max-width: 100%;
@@ -82,7 +81,7 @@
 
         <!-- Contenedor del PDF responsivo -->
         <div class="border border-gray-300 rounded-lg bg-gray-50 mb-6 p-2" id="pdf-container">
-            <div style="position: relative; display: inline-block;">
+            <div id="pdf-wrapper" style="position: relative; display: inline-block;">
                 <canvas id="pdf-canvas"></canvas>
                 
                 <div id="drag-1" class="draggable-text absolute text-blue-900 px-2 py-1 rounded text-sm font-bold shadow-sm hidden" style="left: 20px; top: 20px;">Lugar de destino</div>
@@ -115,6 +114,7 @@
         let archivoOriginalArrayBuffer = null;
         let nombreArchivoActual = '';
         let materiaValidaSeleccionada = "";
+        let escalaActualPDF = 1.0; // Variable para almacenar la escala real de renderizado
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
 
@@ -183,7 +183,7 @@
             }
         });
 
-        // 1. Cargar PDF localmente de forma responsiva
+        // 1. Cargar PDF localmente de forma responsiva y almacenar la escala
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file || file.type !== 'application/pdf') {
@@ -202,15 +202,20 @@
                 pdfjsLib.getDocument(typedarray).promise.then(pdfDoc => {
                     return pdfDoc.getPage(1);
                 }).then(page => {
-                    // Escala adaptable para celulares y PC
                     const containerWidth = document.getElementById('pdf-container').clientWidth - 20;
                     const unscaledViewport = page.getViewport({ scale: 1.0 });
-                    const scale = containerWidth < unscaledViewport.width ? containerWidth / unscaledViewport.width : 1.0;
                     
-                    const renderViewport = page.getViewport({ scale: scale });
+                    // Calculamos la escala exacta para que encaje adaptado en celulares y PC
+                    escalaActualPDF = containerWidth < unscaledViewport.width ? containerWidth / unscaledViewport.width : 1.0;
+                    
+                    const renderViewport = page.getViewport({ scale: escalaActualPDF });
                     canvas.height = renderViewport.height;
                     canvas.width = renderViewport.width;
                     
+                    // Ajustamos el contenedor wrapper al mismo ancho del canvas renderizado
+                    document.getElementById('pdf-wrapper').style.width = `${canvas.width}px`;
+                    document.getElementById('pdf-wrapper').style.height = `${canvas.height}px`;
+
                     page.render({ canvasContext: ctx, viewport: renderViewport });
                     document.querySelectorAll('.draggable-text').forEach(el => el.classList.remove('hidden'));
                 });
@@ -263,7 +268,7 @@
             });
         });
 
-        // 4. Modificar PDF, aplicar formato de fecha DD/MM/YYYY y subir
+        // 4. Modificar PDF con cálculo de coordenadas basado en la escala real
         document.getElementById('btn-guardar').addEventListener('click', async () => {
             if (!materiaValidaSeleccionada) {
                 errorMateria.classList.remove('hidden');
@@ -282,18 +287,16 @@
                 const pdfDoc = await PDFLib.PDFDocument.load(bufferParaEditar);
                 const pages = pdfDoc.getPages();
                 const firstPage = pages[0];
-                const { width: pdfWidth, height: pdfHeight } = firstPage.getSize();
+                const { height: pdfHeight } = firstPage.getSize();
 
-                const canvasClientWidth = canvas.width;
-                const canvasClientHeight = canvas.height;
-
+                // Conversión exacta usando la escala real del renderizado del PDF
                 function calcularCoordenadasPDF(elemId) {
                     const el = document.getElementById(elemId);
-                    const leftPx = parseInt(el.style.left);
-                    const topPx = parseInt(el.style.top);
+                    const leftPx = parseInt(el.style.left) || 0;
+                    const topPx = parseInt(el.style.top) || 0;
 
-                    const x = (leftPx / canvasClientWidth) * pdfWidth;
-                    const y = pdfHeight - ((topPx / canvasClientHeight) * pdfHeight) - 10;
+                    const x = leftPx / escalaActualPDF;
+                    const y = pdfHeight - (topPx / escalaActualPDF) - 12; // Ajuste fino vertical
 
                     return { x, y, leftPx, topPx };
                 }
@@ -309,7 +312,7 @@
                 const fLlegada = formatearFecha(fLlegadaRaw);
                 const pos3 = calcularCoordenadasPDF('drag-3');
 
-                // Estampar textos con formato ordenado
+                // Estampar textos en el PDF real
                 firstPage.drawText(dest, { x: pos1.x, y: pos1.y, size: 12 });
                 firstPage.drawText(fSalida, { x: pos2.x, y: pos2.y, size: 12 });
                 firstPage.drawText(fLlegada, { x: pos3.x, y: pos3.y, size: 12 });
