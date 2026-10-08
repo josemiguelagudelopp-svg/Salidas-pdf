@@ -21,6 +21,20 @@
             background: transparent;
             border: 2px dashed rgba(59, 130, 246, 0.8);
         }
+        /* Contenedor adaptativo para celulares */
+        #pdf-container {
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            position: relative;
+        }
+        #pdf-canvas {
+            max-width: 100%;
+            height: auto !important;
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-4 md:p-8">
@@ -66,13 +80,15 @@
             </div>
         </div>
 
-        <!-- Contenedor del PDF con etiquetas transparentes -->
-        <div class="relative inline-block border border-gray-300 rounded-lg overflow-hidden bg-gray-50 mb-6 max-w-full overflow-x-auto" id="pdf-container">
-            <canvas id="pdf-canvas" class="block mx-auto"></canvas>
-            
-            <div id="drag-1" class="draggable-text absolute text-blue-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 50px;">Lugar de destino</div>
-            <div id="drag-2" class="draggable-text absolute text-green-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 100px;">Fecha de salida</div>
-            <div id="drag-3" class="draggable-text absolute text-purple-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 150px;">Fecha de llegada</div>
+        <!-- Contenedor del PDF responsivo -->
+        <div class="border border-gray-300 rounded-lg bg-gray-50 mb-6 p-2" id="pdf-container">
+            <div style="position: relative; display: inline-block;">
+                <canvas id="pdf-canvas"></canvas>
+                
+                <div id="drag-1" class="draggable-text absolute text-blue-900 px-2 py-1 rounded text-sm font-bold shadow-sm hidden" style="left: 20px; top: 20px;">Lugar de destino</div>
+                <div id="drag-2" class="draggable-text absolute text-green-900 px-2 py-1 rounded text-sm font-bold shadow-sm hidden" style="left: 20px; top: 60px;">Fecha de salida</div>
+                <div id="drag-3" class="draggable-text absolute text-purple-900 px-2 py-1 rounded text-sm font-bold shadow-sm hidden" style="left: 20px; top: 100px;">Fecha de llegada</div>
+            </div>
         </div>
 
         <!-- Botón Guardar -->
@@ -102,6 +118,16 @@
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
 
+        // Función para formatear fecha de YYYY-MM-DD a DD/MM/YYYY
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return "";
+            const partes = fechaStr.split('-');
+            if (partes.length === 3) {
+                return `${partes[2]}/${partes[1]}/${partes[0]}`;
+            }
+            return fechaStr;
+        }
+
         // Lista oficial de materias
         const materias = [
             "Fisiología de la reproducción", "Reproducción", "Producción bovina", 
@@ -110,7 +136,7 @@
             "Fisiopatología", "Nutrición", "Biología", "Producción piscícola", "Especies menores"
         ];
 
-        // Lógica del Buscador Predictivo (Autocompletado)
+        // Buscador Predictivo
         const inputMateria = document.getElementById('input-materia');
         const listaSugerencias = document.getElementById('lista-sugerencias');
         const errorMateria = document.getElementById('error-materia');
@@ -148,7 +174,6 @@
             }
         });
 
-        // Ocultar sugerencias si hace clic fuera
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#input-materia') && !e.target.closest('#lista-sugerencias')) {
                 listaSugerencias.classList.add('hidden');
@@ -158,7 +183,7 @@
             }
         });
 
-        // 1. Cargar PDF localmente
+        // 1. Cargar PDF localmente de forma responsiva
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file || file.type !== 'application/pdf') {
@@ -177,7 +202,12 @@
                 pdfjsLib.getDocument(typedarray).promise.then(pdfDoc => {
                     return pdfDoc.getPage(1);
                 }).then(page => {
-                    const renderViewport = page.getViewport({ scale: 1.2 });
+                    // Escala adaptable para celulares y PC
+                    const containerWidth = document.getElementById('pdf-container').clientWidth - 20;
+                    const unscaledViewport = page.getViewport({ scale: 1.0 });
+                    const scale = containerWidth < unscaledViewport.width ? containerWidth / unscaledViewport.width : 1.0;
+                    
+                    const renderViewport = page.getViewport({ scale: scale });
                     canvas.height = renderViewport.height;
                     canvas.width = renderViewport.width;
                     
@@ -188,18 +218,22 @@
             fileReader.readAsArrayBuffer(file);
         });
 
-        // 2. Sincronizar inputs con etiquetas flotantes transparentes
+        // 2. Sincronizar inputs
         const inputsConfig = [
-            { idInput: 'input-1', idDrag: 'drag-1', defaultText: 'Lugar de destino' },
-            { idInput: 'input-2', idDrag: 'drag-2', defaultText: 'Fecha de salida' },
-            { idInput: 'input-3', idDrag: 'drag-3', defaultText: 'Fecha de llegada' }
+            { idInput: 'input-1', idDrag: 'drag-1', defaultText: 'Lugar de destino', isDate: false },
+            { idInput: 'input-2', idDrag: 'drag-2', defaultText: 'Fecha de salida', isDate: true },
+            { idInput: 'input-3', idDrag: 'drag-3', defaultText: 'Fecha de llegada', isDate: true }
         ];
 
         inputsConfig.forEach(item => {
             const input = document.getElementById(item.idInput);
             const label = document.getElementById(item.idDrag);
             input.addEventListener('input', (e) => {
-                label.textContent = e.target.value || item.defaultText;
+                let val = e.target.value;
+                if (item.isDate && val) {
+                    val = formatearFecha(val);
+                }
+                label.textContent = val || item.defaultText;
             });
         });
 
@@ -229,7 +263,7 @@
             });
         });
 
-        // 4. Modificar PDF, subir a Storage y guardar en Supabase con validaciones estrictas
+        // 4. Modificar PDF, aplicar formato de fecha DD/MM/YYYY y subir
         document.getElementById('btn-guardar').addEventListener('click', async () => {
             if (!materiaValidaSeleccionada) {
                 errorMateria.classList.remove('hidden');
@@ -266,20 +300,23 @@
 
                 const dest = document.getElementById('input-1').value;
                 const pos1 = calcularCoordenadasPDF('drag-1');
-                const fSalida = document.getElementById('input-2').value;
+                
+                const fSalidaRaw = document.getElementById('input-2').value;
+                const fSalida = formatearFecha(fSalidaRaw);
                 const pos2 = calcularCoordenadasPDF('drag-2');
-                const fLlegada = document.getElementById('input-3').value;
+                
+                const fLlegadaRaw = document.getElementById('input-3').value;
+                const fLlegada = formatearFecha(fLlegadaRaw);
                 const pos3 = calcularCoordenadasPDF('drag-3');
 
-                // Estampar textos
-                firstPage.drawText(dest, { x: pos1.x, y: pos1.y, size: 14 });
-                firstPage.drawText(fSalida, { x: pos2.x, y: pos2.y, size: 14 });
-                firstPage.drawText(fLlegada, { x: pos3.x, y: pos3.y, size: 14 });
+                // Estampar textos con formato ordenado
+                firstPage.drawText(dest, { x: pos1.x, y: pos1.y, size: 12 });
+                firstPage.drawText(fSalida, { x: pos2.x, y: pos2.y, size: 12 });
+                firstPage.drawText(fLlegada, { x: pos3.x, y: pos3.y, size: 12 });
 
                 const pdfBytes = await pdfDoc.save();
                 const blobPDF = new Blob([pdfBytes], { type: 'application/pdf' });
 
-                // Limpiar tildes y caracteres especiales de la materia para el nombre del archivo
                 const materiaLimpia = materiaValidaSeleccionada
                     .normalize("NFD")
                     .replace(/[\u0300-\u036f]/g, "")
@@ -287,7 +324,6 @@
 
                 const fileName = `responsabilidad_${materiaLimpia}_${Date.now()}.pdf`;
 
-                // Subir a Storage
                 const { data: uploadData, error: uploadError } = await supabaseClient.storage
                     .from('pdfs')
                     .upload(fileName, blobPDF, {
@@ -297,14 +333,12 @@
 
                 if (uploadError) throw uploadError;
 
-                // Obtener URL pública
                 const { data: publicUrlData } = supabaseClient.storage
                     .from('pdfs')
                     .getPublicUrl(fileName);
 
                 const urlPublica = publicUrlData.publicUrl;
 
-                // Guardar en la tabla
                 const { error: dbError } = await supabaseClient
                     .from('documentos_editados')
                     .insert([{
