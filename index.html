@@ -20,6 +20,18 @@
             user-select: none;
             background: transparent;
             border: 2px dashed rgba(59, 130, 246, 0.8);
+            z-index: 20;
+        }
+        /* Contenedor con scroll suave para móviles */
+        #pdf-container {
+            width: 100%;
+            max-height: 70vh;
+            overflow: auto;
+            position: relative;
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            -webkit-overflow-scrolling: touch;
         }
     </style>
 </head>
@@ -47,7 +59,7 @@
             <input type="text" id="input-materia" placeholder="Escribe para buscar materia..." autocomplete="off" class="block w-full rounded-md border-gray-300 shadow-sm border p-2.5 bg-white focus:ring-blue-500 focus:border-blue-500 text-base">
             
             <!-- Lista desplegable de sugerencias -->
-            <ul id="lista-sugerencias" class="absolute z-10 left-4 right-4 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto hidden mt-1"></ul>
+            <ul id="lista-sugerencias" class="absolute z-30 left-4 right-4 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto hidden mt-1"></ul>
             
             <!-- Mensaje de advertencia en rojo -->
             <p id="error-materia" class="text-red-600 text-xs font-semibold mt-2 hidden">⚠️ Debes seleccionar una materia válida de la lista sugerida.</p>
@@ -78,13 +90,15 @@
             </div>
         </div>
 
-        <!-- Contenedor del PDF con etiquetas transparentes -->
-        <div class="relative inline-block border border-gray-300 rounded-lg overflow-hidden bg-gray-50 mb-6 max-w-full overflow-x-auto" id="pdf-container">
-            <canvas id="pdf-canvas" class="block mx-auto"></canvas>
-            
-            <div id="drag-1" class="draggable-text absolute text-blue-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 50px;">Lugar de destino</div>
-            <div id="drag-2" class="draggable-text absolute text-green-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 100px;">Fecha de salida</div>
-            <div id="drag-3" class="draggable-text absolute text-purple-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 150px;">Fecha de llegada</div>
+        <!-- Contenedor del PDF con auto-scroll -->
+        <div id="pdf-container" class="mb-6">
+            <div id="pdf-wrapper" style="position: relative; display: inline-block; min-width: 100%;">
+                <canvas id="pdf-canvas" class="block"></canvas>
+                
+                <div id="drag-1" class="draggable-text absolute text-blue-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 50px;">Lugar de destino</div>
+                <div id="drag-2" class="draggable-text absolute text-green-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 100px;">Fecha de salida</div>
+                <div id="drag-3" class="draggable-text absolute text-purple-900 px-3 py-1.5 rounded-md text-base font-bold shadow-sm hidden" style="left: 50px; top: 150px;">Fecha de llegada</div>
+            </div>
         </div>
 
         <!-- Botón Guardar -->
@@ -113,6 +127,7 @@
         let materiaValidaSeleccionada = "";
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
+        const pdfContainer = document.getElementById('pdf-container');
 
         // Función para formatear fecha de YYYY-MM-DD a DD/MM/YYYY
         function formatearFecha(fechaStr) {
@@ -198,10 +213,13 @@
                 pdfjsLib.getDocument(typedarray).promise.then(pdfDoc => {
                     return pdfDoc.getPage(1);
                 }).then(page => {
-                    const renderViewport = page.getViewport({ scale: 1.2 });
+                    const renderViewport = page.getViewport({ scale: 1.3 });
                     canvas.height = renderViewport.height;
                     canvas.width = renderViewport.width;
                     
+                    document.getElementById('pdf-wrapper').style.width = `${canvas.width}px`;
+                    document.getElementById('pdf-wrapper').style.height = `${canvas.height}px`;
+
                     page.render({ canvasContext: ctx, viewport: renderViewport });
                     document.querySelectorAll('.draggable-text').forEach(el => el.classList.remove('hidden'));
                 });
@@ -228,7 +246,7 @@
             });
         });
 
-        // 3. Arrastre táctil y de mouse
+        // 3. Arrastre táctil avanzado con Auto-Scroll (Mueve la interfaz del PDF hacia el borde)
         document.querySelectorAll('.draggable-text').forEach(el => {
             let isDragging = false;
             let startX, startY, initialX, initialY;
@@ -244,8 +262,31 @@
 
             el.addEventListener('pointermove', (e) => {
                 if (!isDragging) return;
-                el.style.left = `${initialX + (e.clientX - startX)}px`;
-                el.style.top = `${initialY + (e.clientY - startY)}px`;
+                
+                let deltaX = e.clientX - startX;
+                let deltaY = e.clientY - startY;
+                
+                let newLeft = initialX + deltaX;
+                let newTop = initialY + deltaY;
+
+                el.style.left = `${newLeft}px`;
+                el.style.top = `${newTop}px`;
+
+                // Detectar si el dedo o mouse se acerca a los bordes del visor para desplazarlo automáticamente
+                const rectContainer = pdfContainer.getBoundingClientRect();
+                const edgeThreshold = 50; // Píxeles de margen para activar el scroll
+
+                if (e.clientX > rectContainer.right - edgeThreshold) {
+                    pdfContainer.scrollLeft += 10; // Mover derecha
+                } else if (e.clientX < rectContainer.left + edgeThreshold) {
+                    pdfContainer.scrollLeft -= 10; // Mover izquierda
+                }
+
+                if (e.clientY > rectContainer.bottom - edgeThreshold) {
+                    pdfContainer.scrollTop += 10; // Mover abajo
+                } else if (e.clientY < rectContainer.top + edgeThreshold) {
+                    pdfContainer.scrollTop -= 10; // Mover arriba
+                }
             });
 
             el.addEventListener('pointerup', (e) => {
