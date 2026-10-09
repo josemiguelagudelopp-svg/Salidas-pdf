@@ -6,7 +6,7 @@
     <title>Formato de Responsabilidad - Salidas de Campo UTP</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF.js para renderizar -->
+    <!-- PDF.js para renderizar vista previa -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- pdf-lib para modificar el PDF y estampar los textos físicamente -->
     <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
@@ -40,24 +40,9 @@
             box-sizing: border-box;
             margin-top: 0.25rem;
         }
-        /* Estilo robusto para los elementos flotantes arrastrables */
-        .draggable-text {
-            touch-action: none;
-            cursor: move;
-            user-select: none;
-            position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            border: 2px dashed rgba(59, 130, 246, 0.9);
-            z-index: 50;
-            padding: 0.375rem 0.75rem;
-            border-radius: 0.375rem;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-            white-space: nowrap;
-        }
         #pdf-container {
             width: 100%;
-            max-height: 70vh;
+            max-height: 60vh;
             overflow: auto;
             position: relative;
             background-color: #e5e7eb;
@@ -65,11 +50,8 @@
             border-radius: 0.5rem;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 1.5rem;
-        }
-        #pdf-wrapper {
-            position: relative;
-            display: block;
-            margin: 0 auto;
+            display: flex;
+            justify-content: center;
         }
     </style>
 </head>
@@ -106,7 +88,7 @@
             <input type="file" id="file-input" accept="application/pdf" class="cursor-pointer">
         </div>
 
-        <!-- Formulario de Textos Dinámicos con Calendario -->
+        <!-- Formulario de Textos Automáticos -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
                 <label class="block text-sm font-bold text-gray-800">1. Lugar de destino</label>
@@ -122,15 +104,9 @@
             </div>
         </div>
 
-        <!-- Contenedor del PDF con auto-scroll sincronizado -->
+        <!-- Vista Previa del PDF (Sin elementos flotantes para evitar errores táctiles) -->
         <div id="pdf-container">
-            <div id="pdf-wrapper">
-                <canvas id="pdf-canvas" class="block mx-auto"></canvas>
-                
-                <div id="drag-1" class="draggable-text text-blue-900 hidden" style="left: 30px; top: 30px;">Lugar de destino</div>
-                <div id="drag-2" class="draggable-text text-green-900 hidden" style="left: 30px; top: 70px;">Fecha de salida</div>
-                <div id="drag-3" class="draggable-text text-purple-900 hidden" style="left: 30px; top: 110px;">Fecha de llegada</div>
-            </div>
+            <canvas id="pdf-canvas" class="block"></canvas>
         </div>
 
         <!-- Botón Guardar -->
@@ -159,8 +135,6 @@
         let materiaValidaSeleccionada = "";
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
-        const pdfContainer = document.getElementById('pdf-container');
-        const pdfWrapper = document.getElementById('pdf-wrapper');
 
         function formatearFecha(fechaStr) {
             if (!fechaStr) return "";
@@ -219,7 +193,7 @@
             if (!e.target.closest('#input-materia') && !e.target.closest('#lista-sugerencias')) {
                 listaSugerencias.classList.add('hidden');
                 if (!materiaValidaSeleccionada) {
-                    errorMateria.classList.remove('hidden');
+                    errorMateria.classList.add('hidden'); // Ocultar error si no está escribiendo
                 }
             }
         });
@@ -242,102 +216,16 @@
                 pdfjsLib.getDocument(typedarray).promise.then(pdfDoc => {
                     return pdfDoc.getPage(1);
                 }).then(page => {
-                    const renderViewport = page.getViewport({ scale: 1.3 });
+                    const renderViewport = page.getViewport({ scale: 1.2 });
                     canvas.height = renderViewport.height;
                     canvas.width = renderViewport.width;
-                    
-                    pdfWrapper.style.width = `${canvas.width}px`;
-                    pdfWrapper.style.height = `${canvas.height}px`;
-
-                    page.render({ canvasContext: ctx, viewport: renderViewport }).promise.then(() => {
-                        // Mostrar los elementos de texto flotantes una vez renderizado el PDF
-                        document.querySelectorAll('.draggable-text').forEach(el => el.classList.remove('hidden'));
-                    });
+                    page.render({ canvasContext: ctx, viewport: renderViewport });
                 });
             };
             fileReader.readAsArrayBuffer(file);
         });
 
-        const inputsConfig = [
-            { idInput: 'input-1', idDrag: 'drag-1', defaultText: 'Lugar de destino', isDate: false },
-            { idInput: 'input-2', idDrag: 'drag-2', defaultText: 'Fecha de salida', isDate: true },
-            { idInput: 'input-3', idDrag: 'drag-3', defaultText: 'Fecha de llegada', isDate: true }
-        ];
-
-        inputsConfig.forEach(item => {
-            const input = document.getElementById(item.idInput);
-            const label = document.getElementById(item.idDrag);
-            input.addEventListener('input', (e) => {
-                let val = e.target.value;
-                if (item.isDate && val) {
-                    val = formatearFecha(val);
-                }
-                label.textContent = val || item.defaultText;
-            });
-        });
-
-        // Lógica de Arrastre Táctil Robusta basada en Pointer Events directos sobre el Wrapper
-        document.querySelectorAll('.draggable-text').forEach(el => {
-            let isDragging = false;
-            let startX, startY, initialLeft, initialTop;
-
-            el.addEventListener('pointerdown', (e) => {
-                isDragging = true;
-                el.setPointerCapture(e.pointerId);
-                
-                initialLeft = el.offsetLeft;
-                initialTop = el.offsetTop;
-                startX = e.clientX;
-                startY = e.clientY;
-                
-                e.stopPropagation();
-            });
-
-            el.addEventListener('pointermove', (e) => {
-                if (!isDragging) return;
-                
-                let deltaX = e.clientX - startX;
-                let deltaY = e.clientY - startY;
-                
-                let newLeft = initialLeft + deltaX;
-                let newTop = initialTop + deltaY;
-
-                // Limitar dentro de los bordes del wrapper del PDF
-                const maxLeft = pdfWrapper.clientWidth - el.offsetWidth;
-                const maxTop = pdfWrapper.clientHeight - el.offsetHeight;
-
-                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-                newTop = Math.max(0, Math.min(newTop, maxTop));
-
-                el.style.left = `${newLeft}px`;
-                el.style.top = `${newTop}px`;
-
-                // Auto-scroll del contenedor si se acerca a los bordes
-                const rectContainer = pdfContainer.getBoundingClientRect();
-                const edgeThreshold = 50;
-
-                if (e.clientX > rectContainer.right - edgeThreshold) {
-                    pdfContainer.scrollLeft += 8;
-                } else if (e.clientX < rectContainer.left + edgeThreshold) {
-                    pdfContainer.scrollLeft -= 8;
-                }
-
-                if (e.clientY > rectContainer.bottom - edgeThreshold) {
-                    pdfContainer.scrollTop += 8;
-                } else if (e.clientY < rectContainer.top + edgeThreshold) {
-                    pdfContainer.scrollTop -= 8;
-                }
-            });
-
-            el.addEventListener('pointerup', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                try {
-                    el.releasePointerCapture(e.pointerId);
-                } catch (err) {}
-            });
-        });
-
+        // Guardado Automático con Coordenadas Exactas Predefinidas
         document.getElementById('btn-guardar').addEventListener('click', async () => {
             const nombreEstudiante = document.getElementById('input-nombre').value.trim();
             const documentoIdentidad = document.getElementById('input-documento').value.trim();
@@ -366,34 +254,18 @@
                 const firstPage = pages[0];
                 const { width: pdfWidth, height: pdfHeight } = firstPage.getSize();
 
-                const canvasClientWidth = canvas.width;
-                const canvasClientHeight = canvas.height;
+                // COORDENADAS FIJAS AUTOMÁTICAS (Basadas en los registros correctos de tu tabla)
+                // Ajustadas proporcionalmente al sistema de puntos de pdf-lib (origen abajo a la izquierda)
+                const destino = document.getElementById('input-1').value.trim() || "No especificado";
+                const fSalida = formatearFecha(document.getElementById('input-2').value);
+                const fLlegada = formatearFecha(document.getElementById('input-3').value);
 
-                function calcularCoordenadasPDF(elemId) {
-                    const el = document.getElementById(elemId);
-                    const leftPx = parseInt(el.style.left) || 0;
-                    const topPx = parseInt(el.style.top) || 0;
+                // Coordenadas basadas en el análisis de posición de los campos del formato UTP
+                const xPos = 135; 
 
-                    const x = (leftPx / canvasClientWidth) * pdfWidth;
-                    const y = pdfHeight - ((topPx / canvasClientHeight) * pdfHeight) - 10;
-
-                    return { x, y, leftPx, topPx };
-                }
-
-                const dest = document.getElementById('input-1').value;
-                const pos1 = calcularCoordenadasPDF('drag-1');
-                
-                const fSalidaRaw = document.getElementById('input-2').value;
-                const fSalida = formatearFecha(fSalidaRaw);
-                const pos2 = calcularCoordenadasPDF('drag-2');
-                
-                const fLlegadaRaw = document.getElementById('input-3').value;
-                const fLlegada = formatearFecha(fLlegadaRaw);
-                const pos3 = calcularCoordenadasPDF('drag-3');
-
-                firstPage.drawText(dest, { x: pos1.x, y: pos1.y, size: 14 });
-                firstPage.drawText(fSalida, { x: pos2.x, y: pos2.y, size: 14 });
-                firstPage.drawText(fLlegada, { x: pos3.x, y: pos3.y, size: 14 });
+                firstPage.drawText(destino, { x: xPos, y: pdfHeight - 310, size: 12 });
+                firstPage.drawText(fSalida, { x: xPos, y: pdfHeight - 345, size: 12 });
+                firstPage.drawText(fLlegada, { x: xPos, y: pdfHeight - 380, size: 12 });
 
                 const pdfBytes = await pdfDoc.save();
                 const blobPDF = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -428,15 +300,9 @@
                         materia: materiaValidaSeleccionada,
                         nombre_estudiante: nombreEstudiante,
                         documento_identidad: documentoIdentidad,
-                        texto_apartado_1: dest,
-                        pos_x_1: pos1.leftPx,
-                        pos_y_1: pos1.topPx,
+                        texto_apartado_1: destino,
                         texto_apartado_2: fSalida,
-                        pos_x_2: pos2.leftPx,
-                        pos_y_2: pos2.topPx,
-                        texto_apartado_3: fLlegada,
-                        pos_x_3: pos3.leftPx,
-                        pos_y_3: pos3.topPx
+                        texto_apartado_3: fLlegada
                     }]);
 
                 if (dbError) throw dbError;
@@ -444,7 +310,7 @@
                 document.getElementById('link-pdf').href = urlPublica;
                 document.getElementById('link-pdf').textContent = urlPublica;
                 document.getElementById('resultado-url').classList.remove('hidden');
-                alert('¡Formato generado, subido al Storage y guardado con éxito!');
+                alert('¡Formato generado y guardado automáticamente con éxito!');
 
             } catch (error) {
                 alert('Hubo un error: ' + error.message);
