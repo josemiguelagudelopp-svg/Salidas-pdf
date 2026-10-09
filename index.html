@@ -90,7 +90,7 @@
             </div>
         </div>
 
-        <!-- Contenedor del PDF con auto-scroll -->
+        <!-- Contenedor del PDF con auto-scroll sincronizado -->
         <div id="pdf-container" class="mb-6">
             <div id="pdf-wrapper" style="position: relative; display: inline-block; min-width: 100%;">
                 <canvas id="pdf-canvas" class="block"></canvas>
@@ -246,7 +246,7 @@
             });
         });
 
-        // 3. Arrastre táctil avanzado con Auto-Scroll (Mueve la interfaz del PDF hacia el borde)
+        // 3. Arrastre táctil avanzado con Auto-Scroll Sincronizado y Suave
         document.querySelectorAll('.draggable-text').forEach(el => {
             let isDragging = false;
             let startX, startY, initialX, initialY;
@@ -272,20 +272,20 @@
                 el.style.left = `${newLeft}px`;
                 el.style.top = `${newTop}px`;
 
-                // Detectar si el dedo o mouse se acerca a los bordes del visor para desplazarlo automáticamente
+                // Auto-scroll sincronizado y fluido con los bordes del contenedor
                 const rectContainer = pdfContainer.getBoundingClientRect();
-                const edgeThreshold = 50; // Píxeles de margen para activar el scroll
+                const edgeThreshold = 60; // Margen en píxeles para activar el desplazamiento
 
                 if (e.clientX > rectContainer.right - edgeThreshold) {
-                    pdfContainer.scrollLeft += 10; // Mover derecha
+                    pdfContainer.scrollLeft += 6;
                 } else if (e.clientX < rectContainer.left + edgeThreshold) {
-                    pdfContainer.scrollLeft -= 10; // Mover izquierda
+                    pdfContainer.scrollLeft -= 6;
                 }
 
                 if (e.clientY > rectContainer.bottom - edgeThreshold) {
-                    pdfContainer.scrollTop += 10; // Mover abajo
+                    pdfContainer.scrollTop += 6;
                 } else if (e.clientY < rectContainer.top + edgeThreshold) {
-                    pdfContainer.scrollTop -= 10; // Mover arriba
+                    pdfContainer.scrollTop -= 6;
                 }
             });
 
