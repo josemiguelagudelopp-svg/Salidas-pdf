@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formato de Responsabilidad - Salidas de Campo UTP</title>
-    <!-- Tailwind CSS (Respaldado por CSS nativo abajo) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js para renderizar -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -14,7 +14,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        /* Estilos de respaldo críticos para asegurar que nunca se vea en gris/plano */
         body {
             background-color: #f3f4f6;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -41,28 +40,36 @@
             box-sizing: border-box;
             margin-top: 0.25rem;
         }
+        /* Estilo robusto para los elementos flotantes arrastrables */
         .draggable-text {
             touch-action: none;
             cursor: move;
             user-select: none;
-            background: rgba(255, 255, 255, 0.9);
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
             border: 2px dashed rgba(59, 130, 246, 0.9);
-            z-index: 20;
+            z-index: 50;
             padding: 0.375rem 0.75rem;
             border-radius: 0.375rem;
             font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            white-space: nowrap;
         }
         #pdf-container {
             width: 100%;
             max-height: 70vh;
             overflow: auto;
             position: relative;
-            background-color: #f3f4f6;
+            background-color: #e5e7eb;
             border: 1px solid #d1d5db;
             border-radius: 0.5rem;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 1.5rem;
+        }
+        #pdf-wrapper {
+            position: relative;
+            display: block;
+            margin: 0 auto;
         }
     </style>
 </head>
@@ -89,10 +96,7 @@
             <label class="block text-sm font-bold text-blue-900 mb-2">Selecciona o busca la Materia / Asignatura:</label>
             <input type="text" id="input-materia" placeholder="Escribe para buscar materia..." autocomplete="off">
             
-            <!-- Lista desplegable de sugerencias -->
             <ul id="lista-sugerencias" class="absolute z-30 left-4 right-4 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto hidden mt-1"></ul>
-            
-            <!-- Mensaje de advertencia en rojo -->
             <p id="error-materia" class="text-red-600 text-xs font-semibold mt-2 hidden">⚠️ Debes seleccionar una materia válida de la lista sugerida.</p>
         </div>
 
@@ -120,12 +124,12 @@
 
         <!-- Contenedor del PDF con auto-scroll sincronizado -->
         <div id="pdf-container">
-            <div id="pdf-wrapper" style="position: relative; display: inline-block; min-width: 100%;">
-                <canvas id="pdf-canvas" class="block"></canvas>
+            <div id="pdf-wrapper">
+                <canvas id="pdf-canvas" class="block mx-auto"></canvas>
                 
-                <div id="drag-1" class="draggable-text absolute text-blue-900 hidden" style="left: 50px; top: 50px;">Lugar de destino</div>
-                <div id="drag-2" class="draggable-text absolute text-green-900 hidden" style="left: 50px; top: 100px;">Fecha de salida</div>
-                <div id="drag-3" class="draggable-text absolute text-purple-900 hidden" style="left: 50px; top: 150px;">Fecha de llegada</div>
+                <div id="drag-1" class="draggable-text text-blue-900 hidden" style="left: 30px; top: 30px;">Lugar de destino</div>
+                <div id="drag-2" class="draggable-text text-green-900 hidden" style="left: 30px; top: 70px;">Fecha de salida</div>
+                <div id="drag-3" class="draggable-text text-purple-900 hidden" style="left: 30px; top: 110px;">Fecha de llegada</div>
             </div>
         </div>
 
@@ -156,6 +160,7 @@
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
         const pdfContainer = document.getElementById('pdf-container');
+        const pdfWrapper = document.getElementById('pdf-wrapper');
 
         function formatearFecha(fechaStr) {
             if (!fechaStr) return "";
@@ -241,11 +246,13 @@
                     canvas.height = renderViewport.height;
                     canvas.width = renderViewport.width;
                     
-                    document.getElementById('pdf-wrapper').style.width = `${canvas.width}px`;
-                    document.getElementById('pdf-wrapper').style.height = `${canvas.height}px`;
+                    pdfWrapper.style.width = `${canvas.width}px`;
+                    pdfWrapper.style.height = `${canvas.height}px`;
 
-                    page.render({ canvasContext: ctx, viewport: renderViewport });
-                    document.querySelectorAll('.draggable-text').forEach(el => el.classList.remove('hidden'));
+                    page.render({ canvasContext: ctx, viewport: renderViewport }).promise.then(() => {
+                        // Mostrar los elementos de texto flotantes una vez renderizado el PDF
+                        document.querySelectorAll('.draggable-text').forEach(el => el.classList.remove('hidden'));
+                    });
                 });
             };
             fileReader.readAsArrayBuffer(file);
@@ -269,17 +276,21 @@
             });
         });
 
+        // Lógica de Arrastre Táctil Robusta basada en Pointer Events directos sobre el Wrapper
         document.querySelectorAll('.draggable-text').forEach(el => {
             let isDragging = false;
-            let startX, startY, initialX, initialY;
+            let startX, startY, initialLeft, initialTop;
 
             el.addEventListener('pointerdown', (e) => {
                 isDragging = true;
                 el.setPointerCapture(e.pointerId);
-                initialX = el.offsetLeft;
-                initialY = el.offsetTop;
+                
+                initialLeft = el.offsetLeft;
+                initialTop = el.offsetTop;
                 startX = e.clientX;
                 startY = e.clientY;
+                
+                e.stopPropagation();
             });
 
             el.addEventListener('pointermove', (e) => {
@@ -288,31 +299,42 @@
                 let deltaX = e.clientX - startX;
                 let deltaY = e.clientY - startY;
                 
-                let newLeft = initialX + deltaX;
-                let newTop = initialY + deltaY;
+                let newLeft = initialLeft + deltaX;
+                let newTop = initialTop + deltaY;
+
+                // Limitar dentro de los bordes del wrapper del PDF
+                const maxLeft = pdfWrapper.clientWidth - el.offsetWidth;
+                const maxTop = pdfWrapper.clientHeight - el.offsetHeight;
+
+                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+                newTop = Math.max(0, Math.min(newTop, maxTop));
 
                 el.style.left = `${newLeft}px`;
                 el.style.top = `${newTop}px`;
 
+                // Auto-scroll del contenedor si se acerca a los bordes
                 const rectContainer = pdfContainer.getBoundingClientRect();
-                const edgeThreshold = 60;
+                const edgeThreshold = 50;
 
                 if (e.clientX > rectContainer.right - edgeThreshold) {
-                    pdfContainer.scrollLeft += 6;
+                    pdfContainer.scrollLeft += 8;
                 } else if (e.clientX < rectContainer.left + edgeThreshold) {
-                    pdfContainer.scrollLeft -= 6;
+                    pdfContainer.scrollLeft -= 8;
                 }
 
                 if (e.clientY > rectContainer.bottom - edgeThreshold) {
-                    pdfContainer.scrollTop += 6;
+                    pdfContainer.scrollTop += 8;
                 } else if (e.clientY < rectContainer.top + edgeThreshold) {
-                    pdfContainer.scrollTop -= 6;
+                    pdfContainer.scrollTop -= 8;
                 }
             });
 
             el.addEventListener('pointerup', (e) => {
+                if (!isDragging) return;
                 isDragging = false;
-                el.releasePointerCapture(e.pointerId);
+                try {
+                    el.releasePointerCapture(e.pointerId);
+                } catch (err) {}
             });
         });
 
@@ -349,8 +371,8 @@
 
                 function calcularCoordenadasPDF(elemId) {
                     const el = document.getElementById(elemId);
-                    const leftPx = parseInt(el.style.left);
-                    const topPx = parseInt(el.style.top);
+                    const leftPx = parseInt(el.style.left) || 0;
+                    const topPx = parseInt(el.style.top) || 0;
 
                     const x = (leftPx / canvasClientWidth) * pdfWidth;
                     const y = pdfHeight - ((topPx / canvasClientHeight) * pdfHeight) - 10;
