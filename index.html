@@ -474,7 +474,8 @@
             }
 
             try {
-                const urlPlantilla = 'WhatsApp Image 2026-10-07 at 7.45.54 PM.pdf';
+                // Usando el nombre limpio sin espacios ni caracteres especiales
+                const urlPlantilla = 'plantilla.pdf';
                 const existingPdfBytes = await fetch(urlPlantilla).then(res => {
                     if (!res.ok) throw new Error("No se pudo cargar la plantilla PDF oficial en el servidor.");
                     return res.arrayBuffer();
@@ -577,6 +578,7 @@
                         nombre_estudiante: usuarioActual.nombre_estudiante,
                         documento_identidad: usuarioActual.documento_identidad,
                         lugar_expedicion: usuarioActual.lugar_expedicion,
+                        facultad: usuarioActual.facultad,
                         programa_academico: usuarioActual.programa_academico,
                         telefono_fijo: usuarioActual.telefono_fijo,
                         telefono_celular: usuarioActual.telefono_celular,
