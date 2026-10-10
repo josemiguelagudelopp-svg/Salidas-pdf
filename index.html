@@ -47,6 +47,31 @@
             width: 100%;
             height: 120px;
         }
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-bottom: none;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #fff;
+            max-height: 150px;
+            overflow-y: auto;
+            border-radius: 0 0 0.375rem 0.375rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .autocomplete-items div {
+            padding: 8px 12px;
+            cursor: pointer;
+            background-color: #fff;
+            border-bottom: 1px solid #d4d4d4;
+            font-size: 0.85rem;
+        }
+        .autocomplete-items div:hover {
+            background-color: #e2e8f0;
+        }
     </style>
 </head>
 <body>
@@ -103,7 +128,6 @@
                     <div class="md:col-span-4"><label class="text-xs font-bold">Ciudad</label><input type="text" id="reg-ciudad" class="utp-input w-full" value="Pereira"></div>
                 </div>
 
-                <!-- PRESECRIPCIÓN MÉDICA EN REGISTRO -->
                 <h3 class="text-xs font-bold text-green-900 uppercase border-b pb-1 pt-3">Condición Médica</h3>
                 <div>
                     <label class="text-xs font-bold text-gray-700 block mb-1">¿Por prescripción médica debo consumir algún medicamento?</label>
@@ -186,9 +210,17 @@
                     <div><b>Consume Medicamentos:</b> <span id="lbl-consume" class="font-bold text-green-900"></span> (<span id="lbl-cuales">Ninguno</span>)</div>
                 </div>
 
-                <div class="mb-4">
-                    <label class="text-xs font-bold text-green-900 uppercase">Destino de la Salida:</label>
-                    <input type="text" id="salida-destino" required placeholder="Ej: ALABAMA / Finca La Suiza" class="utp-input w-full font-bold text-green-800 text-base mt-1">
+                <!-- MATERIA CON AUTOCOMPLETADO Y DESTINO -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="relative">
+                        <label class="text-xs font-bold text-green-900 uppercase">Materia / Asignatura:</label>
+                        <input type="text" id="salida-materia" autocomplete="off" required placeholder="Empieza a escribir la materia..." class="utp-input w-full font-bold text-green-800 text-sm mt-1 bg-white p-1.5 border rounded">
+                        <div id="autocomplete-list" class="autocomplete-items"></div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-green-900 uppercase">Destino de la Salida:</label>
+                        <input type="text" id="salida-destino" required placeholder="Ej: ALABAMA / Finca La Suiza" class="utp-input w-full font-bold text-green-800 text-sm mt-1 bg-white p-1.5 border rounded">
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-gray-50 p-3 border rounded">
@@ -247,6 +279,54 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let usuarioActual = null;
+
+        // Lista de asignaturas oficiales
+        const materiasDisponibles = [
+            "Introducción a la zootecnia",
+            "Pastos y forrajes",
+            "Miga",
+            "Producción equina",
+            "Cirugía II",
+            "Semiología",
+            "Etología",
+            "Biología",
+            "Reproducción",
+            "Producción bovina",
+            "Fisiología de la reproducción",
+            "Fisiopatología",
+            "Genética",
+            "Producción porcina",
+            "Salud pública"
+        ];
+
+        // Lógica del autocompletado de materias
+        const inputMateria = document.getElementById("salida-materia");
+        const listaSugerencias = document.getElementById("autocomplete-list");
+
+        inputMateria.addEventListener("input", function() {
+            const val = this.value;
+            listaSugerencias.innerHTML = "";
+            if (!val) { return false; }
+            
+            const valLower = val.toLowerCase();
+            materiasDisponibles.forEach(materia => {
+                if (materia.toLowerCase().includes(valLower)) {
+                    const itemDiv = document.createElement("DIV");
+                    itemDiv.innerHTML = `<strong>${materia.substr(0, val.length)}</strong>${materia.substr(val.length)}`;
+                    itemDiv.addEventListener("click", function() {
+                        inputMateria.value = materia;
+                        listaSugerencias.innerHTML = "";
+                    });
+                    listaSugerencias.appendChild(itemDiv);
+                }
+            });
+        });
+
+        document.addEventListener("click", function (e) {
+            if (e.target !== inputMateria) {
+                listaSugerencias.innerHTML = "";
+            }
+        });
 
         function switchTab(tab) {
             const loginBtn = document.getElementById('tab-login-btn');
@@ -307,7 +387,6 @@
             const consumeMed = document.getElementById('reg-consume-med').value;
             let urlArchivo = null;
 
-            // Si subió fórmula médica, guardarla en Storage
             const archivoInput = document.getElementById('reg-archivo-med');
             if (consumeMed === 'Si' && archivoInput.files.length > 0) {
                 const file = archivoInput.files[0];
@@ -464,17 +543,20 @@
         async function generarYGuardarPDF(e) {
             e.preventDefault();
 
+            const materia = document.getElementById('salida-materia').value.trim();
             const destino = document.getElementById('salida-destino').value.trim();
             const fecSalida = formatearFecha(document.getElementById('salida-fec-salida').value);
             const fecLlegada = formatearFecha(document.getElementById('salida-fec-llegada').value);
+            
+            const hoy = new Date();
+            const fechaFormatoHoy = `${String(hoy.getDate()).padStart(2, '0')}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${hoy.getFullYear()}`;
 
-            if (!destino || !fecSalida || !fecLlegada) {
-                alert('Por favor completa el destino y las fechas de la salida.');
+            if (!materia || !destino || !fecSalida || !fecLlegada) {
+                alert('Por favor completa la materia, destino y las fechas de la salida.');
                 return;
             }
 
             try {
-                // URL directa de la plantilla alojada en Supabase Storage
                 const urlPlantilla = 'https://obcwirxjvypxdpxudyqu.supabase.co/storage/v1/object/public/assets/plantilla.pdf';
                 const existingPdfBytes = await fetch(urlPlantilla).then(res => {
                     if (!res.ok) throw new Error("No se pudo descargar la plantilla PDF desde Supabase Storage.");
@@ -507,13 +589,13 @@
                 firstPage.drawText(fecSalida, { x: 78, y: 477, size: fontSizeFechas, font: customFont, color: blackColor });
                 firstPage.drawText(fecLlegada, { x: 314, y: 483, size: fontSizeFechas, font: customFont, color: blackColor });
 
-                // --- PRESCRIPCIÓN MÉDICA (DINÁMICO SÍ / NO y CUALES) ---
+                // --- PRESCRIPCIÓN MÉDICA ---
                 const consume = usuarioActual.consume_medicamentos || 'No';
                 if (consume === 'Si') {
-                    firstPage.drawText('X', { x: 347, y: 322, size: fontSize, font: customFont, color: blackColor }); // X en Sí
-                    firstPage.drawText(usuarioActual.cuales_medicamentos || '', { x: 83, y: 303, size: fontSize, font: customFont, color: blackColor }); // Cuales
+                    firstPage.drawText('X', { x: 347, y: 322, size: fontSize, font: customFont, color: blackColor });
+                    firstPage.drawText(usuarioActual.cuales_medicamentos || '', { x: 83, y: 303, size: fontSize, font: customFont, color: blackColor });
                 } else {
-                    firstPage.drawText('X', { x: 388, y: 323, size: fontSize, font: customFont, color: blackColor }); // X en No
+                    firstPage.drawText('X', { x: 388, y: 323, size: fontSize, font: customFont, color: blackColor });
                 }
 
                 // --- DATOS DEL ACUDIENTE / CONTACTO DE EMERGENCIA ---
@@ -538,7 +620,6 @@
                     });
                 }
 
-                // Si hay anexo de fórmula médica y es imagen, podemos incrustarla en una segunda página opcional
                 if (usuarioActual.url_formula_medica && usuarioActual.url_formula_medica.match(/\.(jpeg|jpg|png)$/i)) {
                     try {
                         const formulaBytes = await fetch(usuarioActual.url_formula_medica).then(res => res.arrayBuffer());
@@ -552,7 +633,7 @@
                         pageAnexo.drawText('ANEXO: FÓRMULA MÉDICA', { x: 50, y: 800, size: 14, font: customFont, color: blackColor });
                         pageAnexo.drawImage(formulaImage, { x: 50, y: 100, width: 495, height: 650 });
                     } catch (errImg) {
-                        console.error("No se pudo adjuntar la imagen de la fórmula médica al PDF", errImg);
+                        console.error("No se pudo adjuntar la imagen", errImg);
                     }
                 }
 
@@ -595,16 +676,18 @@
                         correo_electronico_contacto: usuarioActual.correo_electronico_contacto,
                         direccion_contacto: usuarioActual.direccion_contacto,
                         ciudad_contacto: usuarioActual.ciudad_contacto,
+                        materia: materia,
                         destino: destino,
                         fecha_salida: fecSalida,
                         fecha_llegada: fecLlegada,
+                        fecha_formato: fechaFormatoHoy,
                         url_pdf: urlPublica,
                         nombre_archivo: fileName
                     }]);
 
                 if (dbError) throw dbError;
 
-                alert('¡Formato generado con éxito, prescripción médica y archivo adjuntado!');
+                alert('¡Formato generado con éxito, materia y fecha guardadas!');
                 window.open(urlPublica, '_blank');
 
             } catch (err) {
