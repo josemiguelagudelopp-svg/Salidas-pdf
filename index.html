@@ -474,10 +474,10 @@
             }
 
             try {
-                // Usando el nombre limpio sin espacios ni caracteres especiales
-                const urlPlantilla = 'plantilla.pdf';
+                // URL directa de la plantilla alojada en Supabase Storage
+                const urlPlantilla = 'https://obcwirxjvypxdpxudyqu.supabase.co/storage/v1/object/public/assets/plantilla.pdf';
                 const existingPdfBytes = await fetch(urlPlantilla).then(res => {
-                    if (!res.ok) throw new Error("No se pudo cargar la plantilla PDF oficial en el servidor.");
+                    if (!res.ok) throw new Error("No se pudo descargar la plantilla PDF desde Supabase Storage.");
                     return res.arrayBuffer();
                 });
 
