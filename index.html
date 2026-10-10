@@ -3,123 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formato de Responsabilidad - Salidas de Campo UTP</title>
-    <!-- Tailwind CSS -->
+    <title>Formato de Responsabilidad UTP - 131-F25</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF.js para renderizar vista previa -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- pdf-lib para modificar el PDF y estampar los textos físicamente -->
+    <!-- pdf-lib para modificar la plantilla PDF oficial -->
     <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <style>
         body {
             background-color: #f3f4f6;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: #1f2937;
-            margin: 0;
             padding: 1rem;
-            min-height: 100vh;
         }
         .main-card {
-            max-width: 56rem;
+            max-width: 55rem;
             margin: 0 auto;
             background: #ffffff;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-        }
-        input[type="text"], input[type="date"], input[type="file"] {
-            width: 100%;
-            padding: 0.625rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            font-size: 1rem;
-            background-color: #fff;
-            box-sizing: border-box;
-            margin-top: 0.25rem;
-        }
-        #pdf-container {
-            width: 100%;
-            max-height: 60vh;
-            overflow: auto;
-            position: relative;
-            background-color: #e5e7eb;
-            border: 1px solid #d1d5db;
+            border: 2px solid #166534;
             border-radius: 0.5rem;
-            -webkit-overflow-scrolling: touch;
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: center;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .utp-input {
+            border: none;
+            border-bottom: 1px solid #166534;
+            border-radius: 0;
+            padding: 0.1rem 0.25rem;
+            background: transparent;
+            outline: none;
+            font-size: 0.9rem;
+            color: #1f2937;
+        }
+        .utp-input:focus {
+            background-color: #f0fdf4;
+        }
+        #signature-pad {
+            border: 2px dashed #9ca3af;
+            background-color: #f9fafb;
+            border-radius: 0.375rem;
+            cursor: crosshair;
+            touch-action: none;
+            width: 100%;
+            height: 120px;
         }
     </style>
 </head>
 <body>
 
     <div class="main-card">
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">Formato de Responsabilidad - Salidas de Campo</h1>
-        <p class="text-sm text-gray-600 mb-6">Medicina Veterinaria - UTP</p>
-
-        <!-- Datos del Estudiante -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-            <div>
-                <label class="block text-sm font-bold text-gray-800">Nombre del estudiante</label>
-                <input type="text" id="input-nombre" placeholder="Ej: Juan Pérez">
+        <!-- SECCIÓN 1: INICIO DE SESIÓN / REGISTRO -->
+        <div id="auth-section">
+            <div class="flex justify-between items-center border-b border-green-800 pb-3 mb-6">
+                <div>
+                    <span class="text-xs font-bold text-green-800 tracking-wider">UNIVERSIDAD TECNOLÓGICA DE PEREIRA</span>
+                    <h1 class="text-lg font-bold text-green-900">FORMATO DE RESPONSABILIDAD INDIVIDUAL</h1>
+                </div>
+                <div class="border border-green-800 text-xs text-green-900 font-semibold p-2 rounded bg-green-50">
+                    <div>Código: 131-F25</div>
+                    <div>Versión: 2</div>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-800">Documento de identidad</label>
-                <input type="text" id="input-documento" placeholder="Ej: 1098765432">
+
+            <div class="flex border-b mb-6">
+                <button id="tab-login-btn" onclick="switchTab('login')" class="flex-1 py-2 font-bold text-sm text-green-900 border-b-2 border-green-800">Iniciar Sesión (Ya registrado)</button>
+                <button id="tab-register-btn" onclick="switchTab('register')" class="flex-1 py-2 font-bold text-sm text-gray-500 border-b-2 border-transparent">Registrarse por Primera Vez</button>
+            </div>
+
+            <!-- Login -->
+            <div id="login-form" class="space-y-4 max-w-md mx-auto py-6">
+                <div>
+                    <label class="text-xs font-bold text-gray-700">Documento de Identidad (Cédula)</label>
+                    <input type="text" id="login-cedula" placeholder="Ingresa tu cédula" class="utp-input w-full mt-1">
+                </div>
+                <button onclick="iniciarSesion()" class="w-full bg-green-800 hover:bg-green-900 text-white font-bold py-2.5 rounded-lg shadow transition">
+                    Cargar mis datos y abrir formato
+                </button>
+            </div>
+
+            <!-- Registro -->
+            <div id="register-form" class="space-y-4 hidden pb-4">
+                <h3 class="text-xs font-bold text-green-900 uppercase border-b pb-1">Datos Personales del Estudiante</h3>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-8"><label class="text-xs font-bold">Nombre del estudiante</label><input type="text" id="reg-nombre" class="utp-input w-full"></div>
+                    <div class="md:col-span-4"><label class="text-xs font-bold">De (Expedición)</label><input type="text" id="reg-lugar-exp" class="utp-input w-full"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-6"><label class="text-xs font-bold">Documento de identidad</label><input type="text" id="reg-cedula" class="utp-input w-full"></div>
+                    <div class="md:col-span-6"><label class="text-xs font-bold">Facultad</label><input type="text" id="reg-facultad" class="utp-input w-full" value="Medicina Veterinaria"></div>
+                </div>
+                <div><label class="text-xs font-bold">Programa académico</label><input type="text" id="reg-programa" class="utp-input w-full" value="Medicina Veterinaria"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label class="text-xs font-bold">Teléfono fijo</label><input type="tel" id="reg-tel-fijo" class="utp-input w-full"></div>
+                    <div><label class="text-xs font-bold">Teléfono celular</label><input type="tel" id="reg-tel-cel" class="utp-input w-full"></div>
+                </div>
+                <div><label class="text-xs font-bold">Correo electrónico</label><input type="email" id="reg-correo" class="utp-input w-full"></div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-8"><label class="text-xs font-bold">Dirección de residencia</label><input type="text" id="reg-dir" class="utp-input w-full"></div>
+                    <div class="md:col-span-4"><label class="text-xs font-bold">Ciudad</label><input type="text" id="reg-ciudad" class="utp-input w-full" value="Pereira"></div>
+                </div>
+
+                <!-- PRESECRIPCIÓN MÉDICA EN REGISTRO -->
+                <h3 class="text-xs font-bold text-green-900 uppercase border-b pb-1 pt-3">Condición Médica</h3>
+                <div>
+                    <label class="text-xs font-bold text-gray-700 block mb-1">¿Por prescripción médica debo consumir algún medicamento?</label>
+                    <select id="reg-consume-med" onchange="toggleMedicamentos()" class="utp-input w-full bg-white">
+                        <option value="No">No</option>
+                        <option value="Si">Sí</option>
+                    </select>
+                </div>
+                
+                <div id="seccion-medicamentos" class="hidden space-y-3 bg-green-50 p-3 rounded border border-green-200">
+                    <div>
+                        <label class="text-xs font-bold text-green-900">¿Cuáles medicamentos?</label>
+                        <input type="text" id="reg-cuales-med" placeholder="Ej: Acetaminofén, Salbutamol..." class="utp-input w-full bg-white mt-1">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-green-900">Adjuntar fórmula médica (Foto o PDF)</label>
+                        <input type="file" id="reg-archivo-med" accept="image/*,.pdf" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-green-800 file:text-white hover:file:bg-green-900 mt-1">
+                    </div>
+                </div>
+
+                <h3 class="text-xs font-bold text-green-900 uppercase border-b pb-1 pt-3">Persona de Contacto en Caso de Emergencia</h3>
+                <div><label class="text-xs font-bold">Nombre del contacto</label><input type="text" id="reg-contacto-nombre" class="utp-input w-full"></div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-6"><label class="text-xs font-bold">Parentesco o relación</label><input type="text" id="reg-parentesco" class="utp-input w-full"></div>
+                    <div class="md:col-span-6"><label class="text-xs font-bold">Teléfono celular del acudiente</label><input type="tel" id="reg-contacto-cel" class="utp-input w-full"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label class="text-xs font-bold">Teléfono fijo del acudiente</label><input type="tel" id="reg-contacto-fijo" class="utp-input w-full"></div>
+                    <div><label class="text-xs font-bold">Correo electrónico del acudiente</label><input type="email" id="reg-contacto-correo" class="utp-input w-full"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div class="md:col-span-8"><label class="text-xs font-bold">Dirección de residencia del acudiente</label><input type="text" id="reg-contacto-dir" class="utp-input w-full"></div>
+                    <div class="md:col-span-4"><label class="text-xs font-bold">Ciudad donde reside</label><input type="text" id="reg-contacto-ciudad" class="utp-input w-full"></div>
+                </div>
+
+                <button onclick="registrarUsuario()" class="w-full bg-green-800 hover:bg-green-900 text-white font-bold py-3 rounded-lg shadow transition mt-4">
+                    Guardar mis datos y continuar
+                </button>
             </div>
         </div>
 
-        <!-- Buscador Interactivo de Materia -->
-        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
-            <label class="block text-sm font-bold text-blue-900 mb-2">Selecciona o busca la Materia / Asignatura:</label>
-            <input type="text" id="input-materia" placeholder="Escribe para buscar materia..." autocomplete="off">
-            
-            <ul id="lista-sugerencias" class="absolute z-30 left-4 right-4 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto hidden mt-1"></ul>
-            <p id="error-materia" class="text-red-600 text-xs font-semibold mt-2 hidden">⚠️ Debes seleccionar una materia válida de la lista sugerida.</p>
-        </div>
-
-        <!-- Subida de PDF -->
-        <div class="mb-6 p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Sube tu archivo PDF (Formato de Responsabilidad):</label>
-            <input type="file" id="file-input" accept="application/pdf" class="cursor-pointer">
-        </div>
-
-        <!-- Formulario de Textos Automáticos -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-                <label class="block text-sm font-bold text-gray-800">1. Lugar de destino</label>
-                <input type="text" id="input-1" placeholder="Ej: Finca La Suiza">
+        <!-- SECCIÓN 2: EL FORMATO OFICIAL RELLENO AUTOMÁTICAMENTE -->
+        <div id="form-section" class="hidden">
+            <div class="flex justify-between items-center border-b-2 border-green-800 pb-3 mb-4">
+                <div>
+                    <span class="text-xs font-bold text-green-800 tracking-wider">UNIVERSIDAD TECNOLÓGICA DE PEREIRA</span>
+                    <h2 class="text-base font-bold text-green-900">FORMATO DE RESPONSABILIDAD INDIVIDUAL MAYORES DE EDAD</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="border border-green-800 text-xs text-green-900 font-semibold p-1.5 rounded bg-green-50">
+                        <div>Código: 131-F25 | Versión: 2</div>
+                        <div>Fecha: 2017/05/18 | Página: 1 de 1</div>
+                    </div>
+                    <button onclick="cerrarSesion()" class="text-xs bg-red-100 text-red-700 px-3 py-2 rounded font-semibold hover:bg-red-200">Cambiar Usuario</button>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-800">2. Fecha de salida</label>
-                <input type="date" id="input-2">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-800">3. Fecha de llegada</label>
-                <input type="date" id="input-3">
-            </div>
-        </div>
 
-        <!-- Vista Previa del PDF (Sin elementos flotantes para evitar errores táctiles) -->
-        <div id="pdf-container">
-            <canvas id="pdf-canvas" class="block"></canvas>
-        </div>
+            <div id="info-usuario-alerta" class="bg-green-50 p-2 rounded mb-4 text-xs font-semibold text-green-900 border border-green-200"></div>
 
-        <!-- Botón Guardar -->
-        <div>
-            <button id="btn-guardar" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md transition text-lg cursor-pointer">
-                Generar PDF, Subir y Guardar URL
-            </button>
-        </div>
+            <form id="form-salida" onsubmit="generarYGuardarPDF(event)">
+                <div class="space-y-2 text-sm mb-4 bg-gray-50 p-3 rounded border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
+                        <div class="md:col-span-8"><b>Nombre:</b> <span id="lbl-nombre" class="text-green-900 font-medium"></span></div>
+                        <div class="md:col-span-4"><b>De:</b> <span id="lbl-lugar-exp"></span></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
+                        <div class="md:col-span-6"><b>Documento:</b> <span id="lbl-cedula" class="text-green-900 font-medium"></span></div>
+                        <div class="md:col-span-6"><b>Facultad:</b> <span id="lbl-facultad"></span></div>
+                    </div>
+                    <div><b>Programa académico:</b> <span id="lbl-programa"></span></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div><b>Tel. Fijo:</b> <span id="lbl-telfijo"></span></div>
+                        <div><b>Tel. Celular:</b> <span id="lbl-telcel"></span></div>
+                    </div>
+                    <div><b>Correo:</b> <span id="lbl-correo"></span></div>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
+                        <div class="md:col-span-8"><b>Dirección:</b> <span id="lbl-dir"></span></div>
+                        <div class="md:col-span-4"><b>Ciudad:</b> <span id="lbl-ciudad"></span></div>
+                    </div>
+                    <div><b>Consume Medicamentos:</b> <span id="lbl-consume" class="font-bold text-green-900"></span> (<span id="lbl-cuales">Ninguno</span>)</div>
+                </div>
 
-        <!-- Resultado de la URL -->
-        <div id="resultado-url" class="mt-4 hidden p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p class="text-sm font-medium text-green-800">¡Formato guardado con éxito!</p>
-            <a id="link-pdf" href="#" target="_blank" class="text-blue-600 underline text-sm break-all font-semibold">Ver PDF Online</a>
+                <div class="mb-4">
+                    <label class="text-xs font-bold text-green-900 uppercase">Destino de la Salida:</label>
+                    <input type="text" id="salida-destino" required placeholder="Ej: ALABAMA / Finca La Suiza" class="utp-input w-full font-bold text-green-800 text-base mt-1">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-gray-50 p-3 border rounded">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 text-center mb-1">Fecha de salida</label>
+                        <input type="date" id="salida-fec-salida" required class="border rounded bg-white p-1.5 w-full text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 text-center mb-1">Fecha de llegada</label>
+                        <input type="date" id="salida-fec-llegada" required class="border rounded bg-white p-1.5 w-full text-sm">
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-gray-700 space-y-1.5 mb-4 bg-green-50/40 p-3 rounded border border-green-100">
+                    <p class="font-bold text-green-900">Con mi firma en este documento dejo constancia que:</p>
+                    <p>1. He recibido previo a la salida, la orientación e inducción suficientes para el desarrollo normal de la misma.</p>
+                    <p>2. Me comprometo a asumir la responsabilidad individual de mis actuaciones, hechos y decisiones que puedan implicar riesgo en mi integridad física y/o mental.</p>
+                    <p>3. Me encuentro en condiciones físicas y mentales aptas para participar en la salida.</p>
+                    <p>4. De igual manera eximo a la Universidad Tecnológica de Pereira de la responsabilidad frente a cualquier accidente o hecho, que me afecte o afecte a otros, ocurrido durante la salida académica.</p>
+                </div>
+
+                <div class="text-xs bg-gray-50 p-3 rounded border mb-4 space-y-1">
+                    <p class="font-bold text-gray-800 uppercase">Contacto de Emergencia Registrado:</p>
+                    <p><b>Contacto:</b> <span id="lbl-contacto-nombre"></span> (<span id="lbl-parentesco"></span>) - <b>Cel:</b> <span id="lbl-contacto-cel"></span></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 border-t pt-3 items-start">
+                    <div class="md:col-span-7 space-y-2">
+                        <p class="text-xs italic font-medium text-gray-600">Leído, entendido y Firmado (Estudiante)</p>
+                        <div>
+                            <label class="text-xs font-bold text-gray-700">Cédula del Estudiante:</label>
+                            <span id="lbl-cedula-firma" class="font-bold text-sm block"></span>
+                        </div>
+                    </div>
+                    <div class="md:col-span-5 flex flex-col items-center">
+                        <div class="w-full flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-gray-700">Firma Digital:</span>
+                            <button type="button" onclick="limpiarFirma()" class="text-xs text-red-600 hover:underline font-semibold">Limpiar</button>
+                        </div>
+                        <canvas id="signature-pad"></canvas>
+                    </div>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <button type="submit" class="bg-green-800 hover:bg-green-900 text-white font-bold py-3 px-8 rounded-lg shadow transition w-full md:w-auto">
+                        Generar PDF Oficial con Fórmula, Subir y Guardar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -128,13 +246,211 @@
         const SUPABASE_KEY = 'sb_publishable_nFUde6igy8iYfKScAMFhKQ_K1e7ot-d';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        
-        let archivoOriginalArrayBuffer = null;
-        let nombreArchivoActual = '';
-        let materiaValidaSeleccionada = "";
-        const canvas = document.getElementById('pdf-canvas');
+        let usuarioActual = null;
+
+        function switchTab(tab) {
+            const loginBtn = document.getElementById('tab-login-btn');
+            const registerBtn = document.getElementById('tab-register-btn');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+
+            if (tab === 'login') {
+                loginBtn.className = "flex-1 py-2 font-bold text-sm text-green-900 border-b-2 border-green-800";
+                registerBtn.className = "flex-1 py-2 font-bold text-sm text-gray-500 border-b-2 border-transparent";
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            } else {
+                registerBtn.className = "flex-1 py-2 font-bold text-sm text-green-900 border-b-2 border-green-800";
+                loginBtn.className = "flex-1 py-2 font-bold text-sm text-gray-500 border-b-2 border-transparent";
+                registerForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            }
+        }
+
+        function toggleMedicamentos() {
+            const consume = document.getElementById('reg-consume-med').value;
+            const seccion = document.getElementById('seccion-medicamentos');
+            if (consume === 'Si') {
+                seccion.classList.remove('hidden');
+            } else {
+                seccion.classList.add('hidden');
+            }
+        }
+
+        async function iniciarSesion() {
+            const cedula = document.getElementById('login-cedula').value.trim();
+            if (!cedula) {
+                alert('Por favor ingresa tu número de cédula.');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('usuarios')
+                    .select('*')
+                    .eq('documento_identidad', cedula)
+                    .single();
+
+                if (error || !data) {
+                    alert('No se encontró ningún usuario con esta cédula. Regístrate primero.');
+                    return;
+                }
+
+                usuarioActual = data;
+                cargarDatosEnFormulario();
+            } catch (err) {
+                alert('Error al buscar el usuario: ' + err.message);
+            }
+        }
+
+        async function registrarUsuario() {
+            const consumeMed = document.getElementById('reg-consume-med').value;
+            let urlArchivo = null;
+
+            // Si subió fórmula médica, guardarla en Storage
+            const archivoInput = document.getElementById('reg-archivo-med');
+            if (consumeMed === 'Si' && archivoInput.files.length > 0) {
+                const file = archivoInput.files[0];
+                const fileExt = file.name.split('.').pop();
+                const fileNameMed = `formula_${document.getElementById('reg-cedula').value.trim()}_${Date.now()}.${fileExt}`;
+                
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('pdfs')
+                    .upload(fileNameMed, file, { upsert: true });
+
+                if (!uploadError) {
+                    const { data: pubData } = supabaseClient.storage.from('pdfs').getPublicUrl(fileNameMed);
+                    urlArchivo = pubData.publicUrl;
+                }
+            }
+
+            const nuevoUsuario = {
+                nombre_estudiante: document.getElementById('reg-nombre').value.trim(),
+                documento_identidad: document.getElementById('reg-cedula').value.trim(),
+                lugar_expedicion: document.getElementById('reg-lugar-exp').value.trim(),
+                facultad: document.getElementById('reg-facultad').value.trim(),
+                programa_academico: document.getElementById('reg-programa').value.trim(),
+                telefono_fijo: document.getElementById('reg-tel-fijo').value.trim(),
+                telefono_celular: document.getElementById('reg-tel-cel').value.trim(),
+                correo_electronico: document.getElementById('reg-correo').value.trim(),
+                direccion_residencia: document.getElementById('reg-dir').value.trim(),
+                ciudad: document.getElementById('reg-ciudad').value.trim(),
+                consume_medicamentos: consumeMed,
+                cuales_medicamentos: consumeMed === 'Si' ? document.getElementById('reg-cuales-med').value.trim() : '',
+                url_formula_medica: urlArchivo,
+                nombre_contacto: document.getElementById('reg-contacto-nombre').value.trim(),
+                parentesco: document.getElementById('reg-parentesco').value.trim(),
+                telefono_fijo_contacto: document.getElementById('reg-contacto-fijo').value.trim(),
+                telefono_celular_contacto: document.getElementById('reg-contacto-cel').value.trim(),
+                correo_electronico_contacto: document.getElementById('reg-contacto-correo').value.trim(),
+                direccion_contacto: document.getElementById('reg-contacto-dir').value.trim(),
+                ciudad_contacto: document.getElementById('reg-contacto-ciudad').value.trim()
+            };
+
+            if (!nuevoUsuario.nombre_estudiante || !nuevoUsuario.documento_identidad || !nuevoUsuario.telefono_celular) {
+                alert('Por favor completa al menos los campos obligatorios.');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('usuarios')
+                    .insert([nuevoUsuario])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                alert('¡Registro exitoso!');
+                usuarioActual = data;
+                cargarDatosEnFormulario();
+            } catch (err) {
+                alert('Error en el registro (es posible que la cédula ya exista): ' + err.message);
+            }
+        }
+
+        function cargarDatosEnFormulario() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('form-section').classList.remove('hidden');
+
+            document.getElementById('info-usuario-alerta').textContent = `Sesión activa: ${usuarioActual.nombre_estudiante} (Cédula: ${usuarioActual.documento_identidad})`;
+            document.getElementById('lbl-nombre').textContent = usuarioActual.nombre_estudiante;
+            document.getElementById('lbl-lugar-exp').textContent = usuarioActual.lugar_expedicion || 'No especificado';
+            document.getElementById('lbl-cedula').textContent = usuarioActual.documento_identidad;
+            document.getElementById('lbl-facultad').textContent = usuarioActual.facultad || 'Medicina Veterinaria';
+            document.getElementById('lbl-programa').textContent = usuarioActual.programa_academico || 'Medicina Veterinaria';
+            document.getElementById('lbl-telfijo').textContent = usuarioActual.telefono_fijo || 'N/A';
+            document.getElementById('lbl-telcel').textContent = usuarioActual.telefono_celular;
+            document.getElementById('lbl-correo').textContent = usuarioActual.correo_electronico;
+            document.getElementById('lbl-dir').textContent = usuarioActual.direccion_residencia;
+            document.getElementById('lbl-ciudad').textContent = usuarioActual.ciudad;
+            document.getElementById('lbl-consume').textContent = usuarioActual.consume_medicamentos || 'No';
+            document.getElementById('lbl-cuales').textContent = usuarioActual.cuales_medicamentos || 'Ninguno';
+
+            document.getElementById('lbl-contacto-nombre').textContent = usuarioActual.nombre_contacto || 'N/A';
+            document.getElementById('lbl-parentesco').textContent = usuarioActual.parentesco || 'N/A';
+            document.getElementById('lbl-contacto-cel').textContent = usuarioActual.telefono_celular_contacto || 'N/A';
+            document.getElementById('lbl-cedula-firma').textContent = usuarioActual.documento_identidad;
+
+            setTimeout(resizeCanvas, 100);
+        }
+
+        function cerrarSesion() {
+            usuarioActual = null;
+            document.getElementById('form-section').classList.add('hidden');
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('login-cedula').value = '';
+        }
+
+        const canvas = document.getElementById('signature-pad');
         const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        ['mousedown', 'touchstart'].forEach(event => {
+            canvas.addEventListener(event, (e) => {
+                e.preventDefault();
+                isDrawing = true;
+                const pos = getPointerPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            });
+        });
+
+        ['mousemove', 'touchmove'].forEach(event => {
+            canvas.addEventListener(event, (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const pos = getPointerPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            });
+        });
+
+        ['mouseup', 'mouseleave', 'touchend'].forEach(event => {
+            canvas.addEventListener(event, () => { isDrawing = false; });
+        });
+
+        function limpiarFirma() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
 
         function formatearFecha(fechaStr) {
             if (!fechaStr) return "";
@@ -145,144 +461,107 @@
             return fechaStr;
         }
 
-        const materias = [
-            "Fisiología de la reproducción", "Reproducción", "Producción bovina", 
-            "Producción equina", "MIGA", "Cirugía II", "Semiología", 
-            "Introducción a la zootecnia", "Producción porcina", "Salud pública", 
-            "Fisiopatología", "Nutrición", "Biología", "Producción piscícola", "Especies menores"
-        ];
+        async function generarYGuardarPDF(e) {
+            e.preventDefault();
 
-        const inputMateria = document.getElementById('input-materia');
-        const listaSugerencias = document.getElementById('lista-sugerencias');
-        const errorMateria = document.getElementById('error-materia');
+            const destino = document.getElementById('salida-destino').value.trim();
+            const fecSalida = formatearFecha(document.getElementById('salida-fec-salida').value);
+            const fecLlegada = formatearFecha(document.getElementById('salida-fec-llegada').value);
 
-        inputMateria.addEventListener('input', function() {
-            const query = this.value.toLowerCase().trim();
-            materiaValidaSeleccionada = ""; 
-            listaSugerencias.innerHTML = '';
-
-            if (query === '') {
-                listaSugerencias.classList.add('hidden');
-                errorMateria.classList.remove('hidden');
-                return;
-            }
-
-            const filtradas = materias.filter(m => m.toLowerCase().includes(query));
-
-            if (filtradas.length > 0) {
-                listaSugerencias.classList.remove('hidden');
-                filtradas.forEach(materia => {
-                    const li = document.createElement('li');
-                    li.textContent = materia;
-                    li.className = "p-2.5 hover:bg-blue-100 cursor-pointer text-sm font-medium border-b border-gray-100 last:border-none";
-                    li.addEventListener('click', () => {
-                        inputMateria.value = materia;
-                        materiaValidaSeleccionada = materia;
-                        listaSugerencias.classList.add('hidden');
-                        errorMateria.classList.add('hidden');
-                    });
-                    listaSugerencias.appendChild(li);
-                });
-            } else {
-                listaSugerencias.classList.add('hidden');
-                errorMateria.classList.remove('hidden');
-            }
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#input-materia') && !e.target.closest('#lista-sugerencias')) {
-                listaSugerencias.classList.add('hidden');
-                if (!materiaValidaSeleccionada) {
-                    errorMateria.classList.add('hidden'); // Ocultar error si no está escribiendo
-                }
-            }
-        });
-
-        document.getElementById('file-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file || file.type !== 'application/pdf') {
-                alert('Por favor selecciona un archivo PDF válido.');
-                return;
-            }
-
-            nombreArchivoActual = file.name;
-            const fileReader = new FileReader();
-
-            fileReader.onload = function() {
-                const rawBuffer = this.result;
-                archivoOriginalArrayBuffer = rawBuffer.slice(0);
-                const typedarray = new Uint8Array(rawBuffer.slice(0));
-
-                pdfjsLib.getDocument(typedarray).promise.then(pdfDoc => {
-                    return pdfDoc.getPage(1);
-                }).then(page => {
-                    const renderViewport = page.getViewport({ scale: 1.2 });
-                    canvas.height = renderViewport.height;
-                    canvas.width = renderViewport.width;
-                    page.render({ canvasContext: ctx, viewport: renderViewport });
-                });
-            };
-            fileReader.readAsArrayBuffer(file);
-        });
-
-        // Guardado Automático con Coordenadas Exactas Predefinidas
-        document.getElementById('btn-guardar').addEventListener('click', async () => {
-            const nombreEstudiante = document.getElementById('input-nombre').value.trim();
-            const documentoIdentidad = document.getElementById('input-documento').value.trim();
-
-            if (!nombreEstudiante || !documentoIdentidad) {
-                alert('Por favor completa el nombre y el documento de identidad del estudiante.');
-                return;
-            }
-
-            if (!materiaValidaSeleccionada) {
-                errorMateria.classList.remove('hidden');
-                alert('Debe seleccionar una materia válida de las opciones sugeridas antes de continuar.');
-                inputMateria.focus();
-                return;
-            }
-
-            if (!archivoOriginalArrayBuffer) {
-                alert('Por favor sube un archivo PDF primero.');
+            if (!destino || !fecSalida || !fecLlegada) {
+                alert('Por favor completa el destino y las fechas de la salida.');
                 return;
             }
 
             try {
-                const bufferParaEditar = archivoOriginalArrayBuffer.slice(0);
-                const pdfDoc = await PDFLib.PDFDocument.load(bufferParaEditar);
+                const urlPlantilla = 'WhatsApp Image 2026-10-07 at 7.45.54 PM.pdf';
+                const existingPdfBytes = await fetch(urlPlantilla).then(res => {
+                    if (!res.ok) throw new Error("No se pudo cargar la plantilla PDF oficial en el servidor.");
+                    return res.arrayBuffer();
+                });
+
+                const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
                 const pages = pdfDoc.getPages();
                 const firstPage = pages[0];
-                const { width: pdfWidth, height: pdfHeight } = firstPage.getSize();
+                const customFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                const blackColor = PDFLib.rgb(0, 0, 0); 
+                
+                const fontSize = 11;
+                const fontSizeFechas = 10;
 
-                // COORDENADAS FIJAS AUTOMÁTICAS (Basadas en los registros correctos de tu tabla)
-                // Ajustadas proporcionalmente al sistema de puntos de pdf-lib (origen abajo a la izquierda)
-                const destino = document.getElementById('input-1').value.trim() || "No especificado";
-                const fSalida = formatearFecha(document.getElementById('input-2').value);
-                const fLlegada = formatearFecha(document.getElementById('input-3').value);
+                // --- DATOS DEL ESTUDIANTE Y FACULTAD ---
+                firstPage.drawText(usuarioActual.nombre_estudiante || '', { x: 171, y: 653, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.lugar_expedicion || '', { x: 375, y: 641, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.documento_identidad || '', { x: 179, y: 638, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.facultad || 'Medicina Veterinaria', { x: 399, y: 628, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.programa_academico || 'Medicina Veterinaria', { x: 156, y: 622, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.telefono_fijo || 'N/A', { x: 117, y: 607, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.telefono_celular || '', { x: 300, y: 610, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.correo_electronico || '', { x: 145, y: 593, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.direccion_residencia || '', { x: 173, y: 580, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.ciudad || 'Pereira', { x: 419, y: 585, size: fontSize, font: customFont, color: blackColor });
 
-                // Coordenadas basadas en el análisis de posición de los campos del formato UTP
-                const xPos = 135; 
+                // --- DESTINO Y FECHAS ---
+                firstPage.drawText(destino, { x: 97, y: 553, size: 11, font: customFont, color: blackColor });
+                firstPage.drawText(fecSalida, { x: 78, y: 477, size: fontSizeFechas, font: customFont, color: blackColor });
+                firstPage.drawText(fecLlegada, { x: 314, y: 483, size: fontSizeFechas, font: customFont, color: blackColor });
 
-                firstPage.drawText(destino, { x: xPos, y: pdfHeight - 310, size: 12 });
-                firstPage.drawText(fSalida, { x: xPos, y: pdfHeight - 345, size: 12 });
-                firstPage.drawText(fLlegada, { x: xPos, y: pdfHeight - 380, size: 12 });
+                // --- PRESCRIPCIÓN MÉDICA (DINÁMICO SÍ / NO y CUALES) ---
+                const consume = usuarioActual.consume_medicamentos || 'No';
+                if (consume === 'Si') {
+                    firstPage.drawText('X', { x: 347, y: 322, size: fontSize, font: customFont, color: blackColor }); // X en Sí
+                    firstPage.drawText(usuarioActual.cuales_medicamentos || '', { x: 83, y: 303, size: fontSize, font: customFont, color: blackColor }); // Cuales
+                } else {
+                    firstPage.drawText('X', { x: 388, y: 323, size: fontSize, font: customFont, color: blackColor }); // X en No
+                }
+
+                // --- DATOS DEL ACUDIENTE / CONTACTO DE EMERGENCIA ---
+                firstPage.drawText(usuarioActual.nombre_contacto || '', { x: 231, y: 247, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.parentesco || '', { x: 156, y: 227, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.telefono_fijo_contacto || 'N/A', { x: 108, y: 213, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.telefono_celular_contacto || '', { x: 307, y: 214, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.correo_electronico_contacto || '', { x: 143, y: 199, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.direccion_contacto || '', { x: 172, y: 184, size: fontSize, font: customFont, color: blackColor });
+                firstPage.drawText(usuarioActual.ciudad_contacto || '', { x: 441, y: 187, size: fontSize, font: customFont, color: blackColor });
+
+                firstPage.drawText(usuarioActual.documento_identidad || '', { x: 145, y: 106, size: fontSize, font: customFont, color: blackColor });
+
+                const signatureImageBytes = canvas.toDataURL('image/png');
+                if (signatureImageBytes) {
+                    const pngImage = await pdfDoc.embedPng(signatureImageBytes);
+                    firstPage.drawImage(pngImage, {
+                        x: 42,
+                        y: 141,
+                        width: 95,
+                        height: 50,
+                    });
+                }
+
+                // Si hay anexo de fórmula médica y es imagen, podemos incrustarla en una segunda página opcional
+                if (usuarioActual.url_formula_medica && usuarioActual.url_formula_medica.match(/\.(jpeg|jpg|png)$/i)) {
+                    try {
+                        const formulaBytes = await fetch(usuarioActual.url_formula_medica).then(res => res.arrayBuffer());
+                        let formulaImage;
+                        if (usuarioActual.url_formula_medica.match(/\.png$/i)) {
+                            formulaImage = await pdfDoc.embedPng(formulaBytes);
+                        } else {
+                            formulaImage = await pdfDoc.embedJpg(formulaBytes);
+                        }
+                        const pageAnexo = pdfDoc.addPage([595, 842]);
+                        pageAnexo.drawText('ANEXO: FÓRMULA MÉDICA', { x: 50, y: 800, size: 14, font: customFont, color: blackColor });
+                        pageAnexo.drawImage(formulaImage, { x: 50, y: 100, width: 495, height: 650 });
+                    } catch (errImg) {
+                        console.error("No se pudo adjuntar la imagen de la fórmula médica al PDF", errImg);
+                    }
+                }
 
                 const pdfBytes = await pdfDoc.save();
                 const blobPDF = new Blob([pdfBytes], { type: 'application/pdf' });
+                const fileName = `responsabilidad_${usuarioActual.documento_identidad}_${Date.now()}.pdf`;
 
-                const materiaLimpia = materiaValidaSeleccionada
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "")
-                    .replace(/\s+/g, '_');
-
-                const fileName = `responsabilidad_${materiaLimpia}_${Date.now()}.pdf`;
-
-                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                const { error: uploadError } = await supabaseClient.storage
                     .from('pdfs')
-                    .upload(fileName, blobPDF, {
-                        contentType: 'application/pdf',
-                        upsert: true
-                    });
+                    .upload(fileName, blobPDF, { contentType: 'application/pdf', upsert: true });
 
                 if (uploadError) throw uploadError;
 
@@ -293,30 +572,44 @@
                 const urlPublica = publicUrlData.publicUrl;
 
                 const { error: dbError } = await supabaseClient
-                    .from('documentos_editados')
+                    .from('salidas_campo')
                     .insert([{
-                        nombre_archivo: nombreArchivoActual,
+                        nombre_estudiante: usuarioActual.nombre_estudiante,
+                        documento_identidad: usuarioActual.documento_identidad,
+                        lugar_expedicion: usuarioActual.lugar_expedicion,
+                        programa_academico: usuarioActual.programa_academico,
+                        telefono_fijo: usuarioActual.telefono_fijo,
+                        telefono_celular: usuarioActual.telefono_celular,
+                        correo_electronico: usuarioActual.correo_electronico,
+                        direccion_residencia: usuarioActual.direccion_residencia,
+                        ciudad: usuarioActual.ciudad,
+                        consume_medicamentos: usuarioActual.consume_medicamentos,
+                        cuales_medicamentos: usuarioActual.cuales_medicamentos,
+                        url_formula_medica: usuarioActual.url_formula_medica,
+                        nombre_contacto: usuarioActual.nombre_contacto,
+                        parentesco: usuarioActual.parentesco,
+                        telefono_fijo_contacto: usuarioActual.telefono_fijo_contacto,
+                        telefono_celular_contacto: usuarioActual.telefono_celular_contacto,
+                        correo_electronico_contacto: usuarioActual.correo_electronico_contacto,
+                        direccion_contacto: usuarioActual.direccion_contacto,
+                        ciudad_contacto: usuarioActual.ciudad_contacto,
+                        destino: destino,
+                        fecha_salida: fecSalida,
+                        fecha_llegada: fecLlegada,
                         url_pdf: urlPublica,
-                        materia: materiaValidaSeleccionada,
-                        nombre_estudiante: nombreEstudiante,
-                        documento_identidad: documentoIdentidad,
-                        texto_apartado_1: destino,
-                        texto_apartado_2: fSalida,
-                        texto_apartado_3: fLlegada
+                        nombre_archivo: fileName
                     }]);
 
                 if (dbError) throw dbError;
 
-                document.getElementById('link-pdf').href = urlPublica;
-                document.getElementById('link-pdf').textContent = urlPublica;
-                document.getElementById('resultado-url').classList.remove('hidden');
-                alert('¡Formato generado y guardado automáticamente con éxito!');
+                alert('¡Formato generado con éxito, prescripción médica y archivo adjuntado!');
+                window.open(urlPublica, '_blank');
 
-            } catch (error) {
-                alert('Hubo un error: ' + error.message);
-                console.error(error);
+            } catch (err) {
+                alert('Hubo un error al procesar la plantilla PDF: ' + err.message);
+                console.error(err);
             }
-        });
+        }
     </script>
 </body>
 </html>
