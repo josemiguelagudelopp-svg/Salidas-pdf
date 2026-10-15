@@ -47,31 +47,6 @@
             width: 100%;
             height: 120px;
         }
-        .autocomplete-items {
-            position: absolute;
-            border: 1px solid #d4d4d4;
-            border-bottom: none;
-            border-top: none;
-            z-index: 99;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background-color: #fff;
-            max-height: 150px;
-            overflow-y: auto;
-            border-radius: 0 0 0.375rem 0.375rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .autocomplete-items div {
-            padding: 8px 12px;
-            cursor: pointer;
-            background-color: #fff;
-            border-bottom: 1px solid #d4d4d4;
-            font-size: 0.85rem;
-        }
-        .autocomplete-items div:hover {
-            background-color: #e2e8f0;
-        }
     </style>
 </head>
 <body>
@@ -261,27 +236,43 @@
                     <div><b>Consume Medicamentos:</b> <span id="lbl-consume" class="font-bold text-green-900"></span> (<span id="lbl-cuales">Ninguno</span>)</div>
                 </div>
 
-                <!-- MATERIA CON AUTOCOMPLETADO Y DESTINO -->
+                <!-- MATERIA OFICIAL ESTRICTA Y DESTINO -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="relative">
-                        <label class="text-xs font-bold text-green-900 uppercase">Materia / Asignatura:</label>
-                        <input type="text" id="salida-materia" autocomplete="off" required placeholder="Empieza a escribir la materia..." class="utp-input w-full font-bold text-green-800 text-sm mt-1 bg-white p-1.5 border rounded">
-                        <div id="autocomplete-list" class="autocomplete-items"></div>
+                    <div>
+                        <label class="text-xs font-bold text-green-900 uppercase">Materia / Asignatura (Obligatoria):</label>
+                        <select id="salida-materia" onchange="verificarSeleccionMateria()" required class="utp-input w-full font-bold text-green-800 text-sm mt-1 bg-white p-2 border rounded">
+                            <option value="">-- Selecciona la materia oficial --</option>
+                            <option value="Introducción a la zootecnia">Introducción a la zootecnia</option>
+                            <option value="Pastos y forrajes">Pastos y forrajes</option>
+                            <option value="Miga">Miga</option>
+                            <option value="Producción equina">Producción equina</option>
+                            <option value="Cirugía II">Cirugía II</option>
+                            <option value="Semiología">Semiología</option>
+                            <option value="Etología">Etología</option>
+                            <option value="Biología">Biología</option>
+                            <option value="Reproducción">Reproducción</option>
+                            <option value="Producción bovina">Producción bovina</option>
+                            <option value="Fisiología de la reproducción">Fisiología de la reproducción</option>
+                            <option value="Fisiopatología">Fisiopatología</option>
+                            <option value="Genética">Genética</option>
+                            <option value="Producción porcina">Producción porcina</option>
+                            <option value="Salud pública">Salud pública</option>
+                        </select>
                     </div>
                     <div>
                         <label class="text-xs font-bold text-green-900 uppercase">Destino de la Salida:</label>
-                        <input type="text" id="salida-destino" required placeholder="Ej: ALABAMA / Finca La Suiza" class="utp-input w-full font-bold text-green-800 text-sm mt-1 bg-white p-1.5 border rounded">
+                        <input type="text" id="salida-destino" disabled required placeholder="Primero selecciona una materia..." class="utp-input w-full font-bold text-green-800 text-sm mt-1 bg-gray-100 p-1.5 border rounded cursor-not-allowed">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-gray-50 p-3 border rounded">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 text-center mb-1">Fecha de salida</label>
-                        <input type="date" id="salida-fec-salida" required class="border rounded bg-white p-1.5 w-full text-sm">
+                        <input type="date" id="salida-fec-salida" disabled required class="border rounded bg-gray-100 p-1.5 w-full text-sm cursor-not-allowed">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 text-center mb-1">Fecha de llegada</label>
-                        <input type="date" id="salida-fec-llegada" required class="border rounded bg-white p-1.5 w-full text-sm">
+                        <input type="date" id="salida-fec-llegada" disabled required class="border rounded bg-gray-100 p-1.5 w-full text-sm cursor-not-allowed">
                     </div>
                 </div>
 
@@ -359,51 +350,43 @@
             setTimeout(resizeCanvasRegistro, 100);
         }
 
-        const materiasDisponibles = [
-            "Introducción a la zootecnia",
-            "Pastos y forrajes",
-            "Miga",
-            "Producción equina",
-            "Cirugía II",
-            "Semiología",
-            "Etología",
-            "Biología",
-            "Reproducción",
-            "Producción bovina",
-            "Fisiología de la reproducción",
-            "Fisiopatología",
-            "Genética",
-            "Producción porcina",
-            "Salud pública"
-        ];
+        function verificarSeleccionMateria() {
+            const materiaSelect = document.getElementById('salida-materia').value;
+            const inputDestino = document.getElementById('salida-destino');
+            const inputFecSalida = document.getElementById('salida-fec-salida');
+            const inputFecLlegada = document.getElementById('salida-fec-llegada');
 
-        const inputMateria = document.getElementById("salida-materia");
-        const listaSugerencias = document.getElementById("autocomplete-list");
+            if (materiaSelect !== "") {
+                inputDestino.disabled = false;
+                inputDestino.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                inputDestino.classList.add('bg-white');
+                inputDestino.placeholder = "Ej: ALABAMA / Finca La Suiza";
 
-        inputMateria.addEventListener("input", function() {
-            const val = this.value;
-            listaSugerencias.innerHTML = "";
-            if (!val) { return false; }
-            
-            const valLower = val.toLowerCase();
-            materiasDisponibles.forEach(materia => {
-                if (materia.toLowerCase().includes(valLower)) {
-                    const itemDiv = document.createElement("DIV");
-                    itemDiv.innerHTML = `<strong>${materia.substr(0, val.length)}</strong>${materia.substr(val.length)}`;
-                    itemDiv.addEventListener("click", function() {
-                        inputMateria.value = materia;
-                        listaSugerencias.innerHTML = "";
-                    });
-                    listaSugerencias.appendChild(itemDiv);
-                }
-            });
-        });
+                inputFecSalida.disabled = false;
+                inputFecSalida.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                inputFecSalida.classList.add('bg-white');
 
-        document.addEventListener("click", function (e) {
-            if (e.target !== inputMateria) {
-                listaSugerencias.innerHTML = "";
+                inputFecLlegada.disabled = false;
+                inputFecLlegada.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                inputFecLlegada.classList.add('bg-white');
+            } else {
+                inputDestino.disabled = true;
+                inputDestino.value = "";
+                inputDestino.classList.add('bg-gray-100', 'cursor-not-allowed');
+                inputDestino.classList.remove('bg-white');
+                inputDestino.placeholder = "Primero selecciona una materia...";
+
+                inputFecSalida.disabled = true;
+                inputFecSalida.value = "";
+                inputFecSalida.classList.add('bg-gray-100', 'cursor-not-allowed');
+                inputFecSalida.classList.remove('bg-white');
+
+                inputFecLlegada.disabled = true;
+                inputFecLlegada.value = "";
+                inputFecLlegada.classList.add('bg-gray-100', 'cursor-not-allowed');
+                inputFecLlegada.classList.remove('bg-white');
             }
-        });
+        }
 
         function switchTab(tab) {
             const loginBtn = document.getElementById('tab-login-btn');
@@ -443,31 +426,39 @@
             }
 
             try {
-                let { data, error } = await supabaseClient
+                // Buscamos primero en menores de edad para evitar conflictos con registros antiguos
+                let resMenor = await supabaseClient
+                    .from('usuarios_menores')
+                    .select('*')
+                    .eq('documento_identidad', cedula)
+                    .single();
+
+                if (resMenor.data && !resMenor.error) {
+                    usuarioActual = resMenor.data;
+                    tipoEstudianteActual = 'menor';
+                    document.getElementById('btn-tipo-menor').className = "py-2 px-4 rounded font-bold text-xs bg-green-800 text-white shadow";
+                    document.getElementById('btn-tipo-mayor').className = "py-2 px-4 rounded font-bold text-xs bg-white text-green-900 border border-green-800";
+                    cargarDatosEnFormulario();
+                    return;
+                }
+
+                // Si no está en menores, buscamos en la tabla de mayores
+                let resMayor = await supabaseClient
                     .from('usuarios')
                     .select('*')
                     .eq('documento_identidad', cedula)
                     .single();
 
-                if (error || !data) {
-                    let resMenor = await supabaseClient
-                        .from('usuarios_menores')
-                        .select('*')
-                        .eq('documento_identidad', cedula)
-                        .single();
-                    
-                    if (resMenor.error || !resMenor.data) {
-                        alert('No se encontró ningún usuario con este documento. Regístrate primero.');
-                        return;
-                    }
-                    data = resMenor.data;
-                    tipoEstudianteActual = 'menor';
-                } else {
+                if (resMayor.data && !resMayor.error) {
+                    usuarioActual = resMayor.data;
                     tipoEstudianteActual = 'mayor';
+                    document.getElementById('btn-tipo-mayor').className = "py-2 px-4 rounded font-bold text-xs bg-green-800 text-white shadow";
+                    document.getElementById('btn-tipo-menor').className = "py-2 px-4 rounded font-bold text-xs bg-white text-green-900 border border-green-800";
+                    cargarDatosEnFormulario();
+                    return;
                 }
 
-                usuarioActual = data;
-                cargarDatosEnFormulario();
+                alert('No se encontró ningún usuario con este documento. Regístrate primero.');
             } catch (err) {
                 alert('Error al buscar el usuario: ' + err.message);
             }
@@ -622,6 +613,8 @@
             document.getElementById('form-section').classList.add('hidden');
             document.getElementById('auth-section').classList.remove('hidden');
             document.getElementById('login-cedula').value = '';
+            document.getElementById('salida-materia').value = "";
+            verificarSeleccionMateria();
             limpiarFirmaRegistro();
         }
 
@@ -782,8 +775,8 @@
                     firstPage.drawText(usuarioActual.ciudad || 'Pereira', { x: 419, y: 585, size: fontSize, font: customFont, color: blackColor });
 
                     firstPage.drawText(destino, { x: 97, y: 553, size: 11, font: customFont, color: blackColor });
-                    firstPage.drawText(fecSalida, { x: 78, y: 477, size: fontSizeFechas, font: customFont, color: blackColor });
-                    firstPage.drawText(fecLlegada, { x: 314, y: 483, size: fontSizeFechas, font: customFont, color: blackColor });
+                    firstPage.drawText(fecLlegada, { x: 322, y: 459, size: fontSizeFechas, font: customFont, color: blackColor });
+                    firstPage.drawText(fecSalida, { x: 111, y: 451, size: fontSizeFechas, font: customFont, color: blackColor });
 
                     const consume = usuarioActual.consume_medicamentos || 'No';
                     if (consume === 'Si') {
