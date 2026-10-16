@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Lista de Asistencia - UTP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- pdf-lib para manipular la plantilla oficial -->
+    <script src="https://unpkg.com/pdf-lib@1.4.0/dist/pdf-lib.min.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 p-6 font-sans text-gray-800">
+
+    <div class="max-w-4xl mx-auto bg-white border-2 border-green-800 rounded-lg p-6 shadow-lg">
+        <div class="flex justify-between items-center border-b-2 border-green-800 pb-4 mb-6">
+            <div>
+                <span class="text-xs font-bold text-green-800 tracking-wider">UNIVERSIDAD TECNOLÓGICA DE PEREIRA</span>
+                <h1 class="text-xl font-bold text-green-900">Generador de Lista de Asistencia (Formato Clases Prácticas)</h1>
+            </div>
+            <a href="admin.html" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-3 py-1.5 rounded text-xs transition">
+                ⬅ Volver al Panel
+            </a>
+        </div>
+
+        <!-- Filtros para generar la lista -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-green-50 p-4 rounded-lg border border-green-200">
+            <div>
+                <label class="text-xs font-bold text-green-900 uppercase block mb-1">Materia:</label>
+                <select id="gen-materia" class="w-full border border-green-800 rounded p-2 text-sm bg-white font-semibold">
+                    <option value="">-- Selecciona la materia --</option>
+                    <option value="Introducción a la zootecnia">Introducción a la zootecnia</option>
+                    <option value="Pastos y forrajes">Pastos y forrajes</option>
+                    <option value="Miga">Miga</option>
+                    <option value="Producción equina">Producción equina</option>
+                    <option value="Cirugía II">Cirugía II</option>
+                    <option value="Semiología">Semiología</option>
+                    <option value="Etología">Etología</option>
+                    <option value="Biología">Biología</option>
+                    <option value="Reproducción">Reproducción</option>
+                    <option value="Producción bovina">Producción bovina</option>
+                    <option value="Fisiología de la reproducción">Fisiología de la reproducción</option>
+                    <option value="Fisiopatología">Fisiopatología</option>
+                    <option value="Genética">Genética</option>
+                    <option value="Producción porcina">Producción porcina</option>
+                    <option value="Salud pública">Salud pública</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-green-900 uppercase block mb-1">Fecha (Día de salida):</label>
+                <input type="text" id="gen-fecha" placeholder="Ej: 15/10/2026" class="w-full border border-green-800 rounded p-2 text-sm bg-white font-semibold">
+            </div>
+            <div class="flex items-end">
+                <button onclick="buscarEstudiantesSalida()" class="w-full bg-green-800 hover:bg-green-900 text-white font-bold p-2 rounded text-sm shadow transition">
+                    🔍 Buscar Estudiantes
+                </button>
+            </div>
+        </div>
+
+        <!-- Vista previa de estudiantes encontrados -->
+        <div class="mb-6">
+            <h3 class="text-sm font-bold text-green-900 uppercase mb-2">Estudiantes Inscritos para esta Salida:</h3>
+            <div class="overflow-x-auto border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-green-900 text-white text-xs uppercase">
+                            <th class="p-2.5">#</th>
+                            <th class="p-2.5">Documento</th>
+                            <th class="p-2.5">Estudiante</th>
+                            <th class="p-2.5">Destino</th>
+                            <th class="p-2.5 text-center">Firma Registrada</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-estudiantes-preview" class="text-sm divide-y divide-gray-200">
+                        <tr><td colspan="5" class="p-4 text-center text-gray-500">Selecciona materia y fecha para buscar...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="info-total" class="text-xs text-gray-600 mt-2 font-semibold"></div>
+        </div>
+
+        <!-- Botón de Generación -->
+        <div class="text-center border-t pt-4">
+            <button id="btn-generar" onclick="generarYGuardarListaAsistencia()" disabled class="bg-gray-400 cursor-not-allowed text-white font-bold py-3 px-8 rounded-lg shadow transition">
+                📄 Generar PDF de Asistencia y Guardar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://obcwirxjvypxdpxudyqu.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_nFUde6igy8iYfKScAMFhKQ_K1e7ot-d';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let estudiantesEncontrados = [];
+        let destinoSalidaGlobal = "";
+
+        function limpiarTextoParaArchivo(texto) {
+            return texto
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") // Eliminar tildes
+                .replace(/[^a-zA-Z0-9]/g, "_")  // Reemplazar caracteres especiales por guion bajo
+                .replace(/_+/g, "_");          // Evitar múltiples guiones bajos seguidos
+        }
+
+        async function buscarEstudiantesSalida() {
+            const materia = document.getElementById('gen-materia').value;
+            const fecha = document.getElementById('gen-fecha').value.trim();
+            const tbody = document.getElementById('tabla-estudiantes-preview');
+            const btnGenerar = document.getElementById('btn-generar');
+
+            if (!materia || !fecha) {
+                alert('Por favor selecciona una materia y escribe la fecha exacta de la salida.');
+                return;
+            }
+
+            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Consultando registros en Supabase...</td></tr>`;
+
+            try {
+                const [resMayores, resMenores] = await Promise.all([
+                    supabaseClient.from('salidas_campo').select('*').eq('materia', materia).eq('fecha_salida', fecha),
+                    supabaseClient.from('salidas_campo_menores').select('*').eq('materia', materia).eq('fecha_salida', fecha)
+                ]);
+
+                let salidasMayores = resMayores.data || [];
+                let salidasMenores = resMenores.data || [];
+                let salidasTotales = [...salidasMayores, ...salidasMenores];
+
+                if (salidasTotales.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500 font-semibold">No se encontraron estudiantes para esta materia y fecha.</td></tr>`;
+                    document.getElementById('info-total').textContent = '';
+                    btnGenerar.disabled = true;
+                    btnGenerar.className = "bg-gray-400 cursor-not-allowed text-white font-bold py-3 px-8 rounded-lg shadow transition";
+                    estudiantesEncontrados = [];
+                    return;
+                }
+
+                destinoSalidaGlobal = salidasTotales[0].destino || 'Práctica Académica UTP';
+
+                estudiantesEncontrados = [];
+                for (let salida of salidasTotales) {
+                    let firmaEst = null;
+
+                    let uMayor = await supabaseClient.from('usuarios').select('firma_estudiante').eq('documento_identidad', salida.documento_identidad).single();
+                    if (uMayor.data && uMayor.data.firma_estudiante) {
+                        firmaEst = uMayor.data.firma_estudiante;
+                    } else {
+                        let uMenor = await supabaseClient.from('usuarios_menores').select('firma_estudiante').eq('documento_identidad', salida.documento_identidad).single();
+                        if (uMenor.data && uMenor.data.firma_estudiante) {
+                            firmaEst = uMenor.data.firma_estudiante;
+                        }
+                    }
+
+                    estudiantesEncontrados.push({
+                        documento_identidad: salida.documento_identidad,
+                        nombre_estudiante: salida.nombre_estudiante,
+                        destino: salida.destino,
+                        firma_estudiante: firmaEst
+                    });
+                }
+
+                renderizarPreview(estudiantesEncontrados);
+
+                btnGenerar.disabled = false;
+                btnGenerar.className = "bg-green-800 hover:bg-green-900 text-white font-bold py-3 px-8 rounded-lg shadow transition";
+
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-600 font-bold">Error al conectar con Supabase.</td></tr>`;
+            }
+        }
+
+        function renderizarPreview(lista) {
+            const tbody = document.getElementById('tabla-estudiantes-preview');
+            tbody.innerHTML = '';
+
+            lista.forEach((est, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50";
+
+                const estadoFirma = est.firma_estudiante 
+                    ? `<span class="text-green-700 font-bold text-xs bg-green-100 px-2 py-1 rounded">✓ Disponible</span>`
+                    : `<span class="text-orange-600 font-semibold text-xs bg-orange-100 px-2 py-1 rounded">⚠️ Sin Firma</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-2.5 text-xs font-bold">${index + 1}</td>
+                    <td class="p-2.5 font-mono text-xs">${est.documento_identidad}</td>
+                    <td class="p-2.5 font-medium">${est.nombre_estudiante}</td>
+                    <td class="p-2.5 text-xs">${est.destino}</td>
+                    <td class="p-2.5 text-center">${estadoFirma}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const paginasCalculadas = Math.ceil(lista.length / 22);
+            document.getElementById('info-total').textContent = `Total estudiantes: ${lista.length} | Se generará(n) ${paginasCalculadas} página(s) de asistencia (máximo 22 por hoja).`;
+        }
+
+        async function generarYGuardarListaAsistencia() {
+            const materia = document.getElementById('gen-materia').value;
+            const fecha = document.getElementById('gen-fecha').value.trim();
+
+            if (estudiantesEncontrados.length === 0) return;
+
+            try {
+                const urlPlantilla = 'https://obcwirxjvypxdpxudyqu.supabase.co/storage/v1/object/public/assets/lista_asistencia.pdf';
+                const existingPdfBytes = await fetch(urlPlantilla).then(res => {
+                    if (!res.ok) throw new Error("No se pudo descargar 'lista_asistencia.pdf' del bucket de assets.");
+                    return res.arrayBuffer();
+                });
+
+                const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+                const customFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                const blackColor = PDFLib.rgb(0, 0, 0);
+
+                const coordenadasYFilas = [
+                    463, 446, 431, 413, 397, 379, 364, 346, 329, 312, 
+                    295, 278, 262, 245, 227, 212, 194, 175, 159, 142, 123, 107
+                ];
+
+                const xDoc = 51;
+                const xNombre = 135;
+                const xFirma = 423;
+
+                const tamanoPagina = 22;
+                const totalPaginas = Math.ceil(estudiantesEncontrados.length / tamanoPagina);
+
+                for (let p = 0; p < totalPaginas; p++) {
+                    let paginaActual;
+
+                    if (p === 0) {
+                        paginaActual = pdfDoc.getPages()[0];
+                    } else {
+                        const [paginaClonada] = await pdfDoc.copyPages(pdfDoc, [0]);
+                        paginaActual = pdfDoc.addPage(paginaClonada);
+                    }
+
+                    paginaActual.drawText(materia || '', { x: 95, y: 702, size: 9, font: customFont, color: blackColor });
+                    paginaActual.drawText(fecha || '', { x: 69, y: 674, size: 9, font: customFont, color: blackColor });
+                    paginaActual.drawText(destinoSalidaGlobal || '', { x: 131, y: 663, size: 9, font: customFont, color: blackColor });
+
+                    const estudiantesPagina = estudiantesEncontrados.slice(p * tamanoPagina, (p + 1) * tamanoPagina);
+
+                    for (let i = 0; i < estudiantesPagina.length; i++) {
+                        const est = estudiantesPagina[i];
+                        const yPos = coordenadasYFilas[i];
+
+                        paginaActual.drawText(String(est.documento_identidad || ''), { x: xDoc, y: yPos, size: 8, font: customFont, color: blackColor });
+                        paginaActual.drawText(String(est.nombre_estudiante || ''), { x: xNombre, y: yPos, size: 8, font: customFont, color: blackColor });
+
+                        if (est.firma_estudiante) {
+                            try {
+                                const base64Data = est.firma_estudiante.split(',')[1];
+                                const firmaBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                                const pngImage = await pdfDoc.embedPng(firmaBytes);
+
+                                paginaActual.drawImage(pngImage, {
+                                    x: xFirma,
+                                    y: yPos - 3,
+                                    width: 70,
+                                    height: 14,
+                                });
+                            } catch (errFirma) {
+                                console.error("Error al incrustar firma:", errFirma);
+                            }
+                        }
+                    }
+                }
+
+                const pdfBytes = await pdfDoc.save();
+                const blobPDF = new Blob([pdfBytes], { type: 'application/pdf' });
+                
+                // Nombre limpio sin tildes ni caracteres extraños
+                const materiaLimpia = limpiarTextoParaArchivo(materia);
+                const fileName = `lista_asistencia_${materiaLimpia}_${Date.now()}.pdf`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('pdfs')
+                    .upload(fileName, blobPDF, { contentType: 'application/pdf', upsert: true });
+
+                if (uploadError) throw uploadError;
+
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('pdfs')
+                    .getPublicUrl(fileName);
+
+                const urlPublica = publicUrlData.publicUrl;
+
+                const { error: dbError } = await supabaseClient
+                    .from('formatos_listas_asistencia')
+                    .insert([{
+                        materia: materia,
+                        fecha: fecha,
+                        destino: destinoSalidaGlobal,
+                        total_estudiantes: estudiantesEncontrados.length,
+                        url_pdf: urlPublica,
+                        nombre_archivo: fileName
+                    }]);
+
+                if (dbError) throw dbError;
+
+                alert('¡Lista de asistencia generada, guardada y subida con éxito!');
+                window.open(urlPublica, '_blank');
+
+            } catch (err) {
+                alert('Error al generar el PDF de asistencia: ' + err.message);
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>
