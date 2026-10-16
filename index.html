@@ -38,14 +38,14 @@
         .utp-input:focus {
             background-color: #f0fdf4;
         }
-        #signature-pad {
+        .signature-canvas {
             border: 2px dashed #9ca3af;
             background-color: #f9fafb;
             border-radius: 0.375rem;
             cursor: crosshair;
             touch-action: none;
             width: 100%;
-            height: 120px;
+            height: 110px;
         }
     </style>
 </head>
@@ -175,13 +175,25 @@
                     </div>
                 </div>
 
-                <!-- FIRMA DIGITAL EN EL REGISTRO -->
-                <div class="pt-3 border-t">
-                    <div class="w-full flex justify-between items-center mb-1">
-                        <span id="lbl-titulo-canvas-reg" class="text-xs font-bold text-green-900 uppercase">Firma Digital del Estudiante:</span>
-                        <button type="button" onclick="limpiarFirmaRegistro()" class="text-xs text-red-600 hover:underline font-semibold">Limpiar Firma</button>
+                <!-- SECCIÓN DE FIRMAS DIGITALES EN EL REGISTRO -->
+                <div class="pt-3 border-t space-y-4">
+                    <!-- Firma del Estudiante (Siempre visible) -->
+                    <div>
+                        <div class="w-full flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-green-900 uppercase">Firma Digital del Estudiante:</span>
+                            <button type="button" onclick="limpiarFirmaEstudiante()" class="text-xs text-red-600 hover:underline font-semibold">Limpiar</button>
+                        </div>
+                        <canvas id="signature-pad-estudiante" class="signature-canvas"></canvas>
                     </div>
-                    <canvas id="signature-pad-registro" style="border: 2px dashed #9ca3af; background-color: #f9fafb; border-radius: 0.375rem; cursor: crosshair; touch-action: none; width: 100%; height: 120px;"></canvas>
+
+                    <!-- Firma del Acudiente (Solo visible si es menor de edad) -->
+                    <div id="contenedor-firma-acudiente" class="hidden">
+                        <div class="w-full flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-green-900 uppercase">Firma Digital del Padre o Acudiente:</span>
+                            <button type="button" onclick="limpiarFirmaAcudiente()" class="text-xs text-red-600 hover:underline font-semibold">Limpiar</button>
+                        </div>
+                        <canvas id="signature-pad-acudiente" class="signature-canvas"></canvas>
+                    </div>
                 </div>
 
                 <button onclick="registrarUsuario()" class="w-full bg-green-800 hover:bg-green-900 text-white font-bold py-3 rounded-lg shadow transition mt-4">
@@ -289,20 +301,13 @@
                     <p><b>Contacto:</b> <span id="lbl-contacto-nombre"></span> (<span id="lbl-parentesco"></span>) - <b>Cel:</b> <span id="lbl-contacto-cel"></span></p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 border-t pt-3 items-start">
-                    <div class="md:col-span-7 space-y-2">
-                        <p id="lbl-texto-firmante" class="text-xs italic font-medium text-gray-600">Leído, entendido y Firmado (Estudiante)</p>
-                        <div>
-                            <label class="text-xs font-bold text-gray-700">Cédula / Documento:</label>
-                            <span id="lbl-cedula-firma" class="font-bold text-sm block"></span>
-                        </div>
+                <div class="flex justify-between items-center border-t pt-4 bg-green-50 p-3 rounded border border-green-200">
+                    <div>
+                        <p id="lbl-texto-firmante" class="text-xs italic font-medium text-gray-700">Firma registrada e identificada con el documento:</p>
+                        <span id="lbl-cedula-firma" class="font-bold text-sm text-green-900 block"></span>
                     </div>
-                    <div class="md:col-span-5 flex flex-col items-center">
-                        <div class="w-full flex justify-between items-center mb-1">
-                            <span class="text-xs font-bold text-gray-700" id="lbl-titulo-canvas-accion">Firma Digital:</span>
-                            <button type="button" id="btn-limpiar-firma-accion" onclick="limpiarFirmaAccion()" class="text-xs text-red-600 hover:underline font-semibold">Limpiar</button>
-                        </div>
-                        <canvas id="signature-pad"></canvas>
+                    <div class="text-xs text-green-900 font-bold bg-white px-3 py-2 rounded shadow-sm border border-green-300">
+                        ✓ Firmas Digitales Cargadas Automáticamente
                     </div>
                 </div>
 
@@ -329,25 +334,25 @@
             const btnMenor = document.getElementById('btn-tipo-menor');
             const seccionMenor = document.getElementById('seccion-menor-padre');
             const seccionContactoMayor = document.getElementById('seccion-contacto-mayor');
+            const contenedorFirmaAcudiente = document.getElementById('contenedor-firma-acudiente');
             const lblCodigoVersion = document.getElementById('lbl-codigo-version');
-            const lblTituloCanvasReg = document.getElementById('lbl-titulo-canvas-reg');
 
             if (tipo === 'mayor') {
                 btnMayor.className = "py-2 px-4 rounded font-bold text-xs bg-green-800 text-white shadow";
                 btnMenor.className = "py-2 px-4 rounded font-bold text-xs bg-white text-green-900 border border-green-800";
                 seccionMenor.classList.add('hidden');
                 seccionContactoMayor.classList.remove('hidden');
+                contenedorFirmaAcudiente.classList.add('hidden');
                 lblCodigoVersion.textContent = "Código: 131-F25";
-                lblTituloCanvasReg.textContent = "Firma Digital del Estudiante:";
             } else {
                 btnMenor.className = "py-2 px-4 rounded font-bold text-xs bg-green-800 text-white shadow";
                 btnMayor.className = "py-2 px-4 rounded font-bold text-xs bg-white text-green-900 border border-green-800";
                 seccionMenor.classList.remove('hidden');
                 seccionContactoMayor.classList.add('hidden');
+                contenedorFirmaAcudiente.classList.remove('hidden');
                 lblCodigoVersion.textContent = "Código: 131-F26";
-                lblTituloCanvasReg.textContent = "Firma Digital del Padre, Madre o Responsable (Acudiente):";
             }
-            setTimeout(resizeCanvasRegistro, 100);
+            setTimeout(resizeCanvasesRegistro, 100);
         }
 
         function verificarSeleccionMateria() {
@@ -404,7 +409,7 @@
                 loginBtn.className = "flex-1 py-2 font-bold text-sm text-gray-500 border-b-2 border-transparent";
                 registerForm.classList.remove('hidden');
                 loginForm.classList.add('hidden');
-                setTimeout(resizeCanvasRegistro, 100);
+                setTimeout(resizeCanvasesRegistro, 100);
             }
         }
 
@@ -426,7 +431,6 @@
             }
 
             try {
-                // Buscamos primero en menores de edad para evitar conflictos con registros antiguos
                 let resMenor = await supabaseClient
                     .from('usuarios_menores')
                     .select('*')
@@ -442,7 +446,6 @@
                     return;
                 }
 
-                // Si no está en menores, buscamos en la tabla de mayores
                 let resMayor = await supabaseClient
                     .from('usuarios')
                     .select('*')
@@ -499,7 +502,8 @@
                 ciudad: document.getElementById('reg-ciudad').value.trim(),
                 consume_medicamentos: consumeMed,
                 cuales_medicamentos: consumeMed === 'Si' ? document.getElementById('reg-cuales-med').value.trim() : '',
-                url_formula_medica: urlArchivo
+                url_formula_medica: urlArchivo,
+                firma_estudiante: canvasEstudiante.toDataURL('image/png')
             };
 
             if (tipoEstudianteActual === 'mayor') {
@@ -521,7 +525,7 @@
                 nuevoUsuario.correo_acudiente = document.getElementById('reg-correo-acudiente').value.trim();
                 nuevoUsuario.parentesco = document.getElementById('reg-parentesco-menor').value.trim();
                 nuevoUsuario.rol_estudiante = document.getElementById('reg-rol-estudiante').value.trim() || 'hijo';
-                nuevoUsuario.firma_acudiente = canvasRegistro.toDataURL('image/png');
+                nuevoUsuario.firma_acudiente = canvasAcudiente.toDataURL('image/png');
             }
 
             if (!nuevoUsuario.nombre_estudiante || !nuevoUsuario.documento_identidad || !nuevoUsuario.telefono_celular) {
@@ -538,7 +542,7 @@
 
                 if (error) throw error;
 
-                alert('¡Registro exitoso y firma guardada en la base de datos!');
+                alert('¡Registro exitoso y firmas guardadas en la base de datos!');
                 usuarioActual = data;
                 cargarDatosEnFormulario();
             } catch (err) {
@@ -555,9 +559,6 @@
             const bloqueAcudienteVista = document.getElementById('bloque-datos-acudiente-vista');
             const contactoEmergenciaBox = document.getElementById('contacto-emergencia-vista-box');
             const lblTextoFirmante = document.getElementById('lbl-texto-firmante');
-            const canvasAccion = document.getElementById('signature-pad');
-            const lblTituloCanvasAccion = document.getElementById('lbl-titulo-canvas-accion');
-            const btnLimpiarAccion = document.getElementById('btn-limpiar-firma-accion');
 
             if (tipoEstudianteActual === 'menor') {
                 lblTituloForm.textContent = "FORMATO DE RESPONSABILIDAD INDIVIDUAL MENORES DE EDAD (131-F26)";
@@ -571,10 +572,6 @@
                 document.getElementById('lbl-acudiente-tel').textContent = usuarioActual.telefono_celular_acudiente || '';
                 document.getElementById('lbl-acudiente-parentesco').textContent = usuarioActual.parentesco || '';
                 document.getElementById('lbl-cedula-firma').textContent = usuarioActual.cedula_acudiente || '';
-
-                canvasAccion.style.display = 'none';
-                lblTituloCanvasAccion.textContent = "Firma del Acudiente (Guardada en sistema):";
-                btnLimpiarAccion.style.display = 'none';
             } else {
                 lblTituloForm.textContent = "FORMATO DE RESPONSABILIDAD INDIVIDUAL MAYORES DE EDAD";
                 lblInfoCodigoVer.textContent = "Código: 131-F25 | Versión: 2 | Fecha: 2017/05/18";
@@ -586,11 +583,6 @@
                 document.getElementById('lbl-parentesco').textContent = usuarioActual.parentesco || 'N/A';
                 document.getElementById('lbl-contacto-cel').textContent = usuarioActual.telefono_celular_contacto || 'N/A';
                 document.getElementById('lbl-cedula-firma').textContent = usuarioActual.documento_identidad;
-
-                canvasAccion.style.display = 'block';
-                lblTituloCanvasAccion.textContent = "Firma Digital Estudiante:";
-                btnLimpiarAccion.style.display = 'block';
-                setTimeout(resizeCanvasAccion, 100);
             }
 
             document.getElementById('info-usuario-alerta').textContent = `Sesión activa: ${usuarioActual.nombre_estudiante} (Documento: ${usuarioActual.documento_identidad} - ${tipoEstudianteActual.toUpperCase()})`;
@@ -615,107 +607,47 @@
             document.getElementById('login-cedula').value = '';
             document.getElementById('salida-materia').value = "";
             verificarSeleccionMateria();
-            limpiarFirmaRegistro();
+            limpiarFirmaEstudiante();
+            limpiarFirmaAcudiente();
         }
 
-        const canvasRegistro = document.getElementById('signature-pad-registro');
-        const ctxRegistro = canvasRegistro.getContext('2d');
-        let isDrawingReg = false;
+        // --- GESTIÓN DE CANVAS DE FIRMA ESTUDIANTE ---
+        const canvasEstudiante = document.getElementById('signature-pad-estudiante');
+        const ctxEstudiante = canvasEstudiante.getContext('2d');
+        let isDrawingEst = false;
 
-        function resizeCanvasRegistro() {
-            const rect = canvasRegistro.getBoundingClientRect();
-            canvasRegistro.width = rect.width;
-            canvasRegistro.height = rect.height;
-            ctxRegistro.strokeStyle = "#000000";
-            ctxRegistro.lineWidth = 2;
-            ctxRegistro.lineCap = "round";
-            ctxRegistro.lineJoin = "round";
-        }
-        window.addEventListener('resize', resizeCanvasRegistro);
+        // --- GESTIÓN DE CANVAS DE FIRMA ACUDIENTE ---
+        const canvasAcudiente = document.getElementById('signature-pad-acudiente');
+        const ctxAcudiente = canvasAcudiente.getContext('2d');
+        let isDrawingAcu = false;
 
-        function getPointerPosReg(e) {
-            const rect = canvasRegistro.getBoundingClientRect();
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-
-        ['mousedown', 'touchstart'].forEach(event => {
-            canvasRegistro.addEventListener(event, (e) => {
-                e.preventDefault();
-                isDrawingReg = true;
-                const pos = getPointerPosReg(e);
-                ctxRegistro.beginPath();
-                ctxRegistro.moveTo(pos.x, pos.y);
+        function resizeCanvasesRegistro() {
+            [canvasEstudiante, canvasAcudiente].forEach(canvas => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
             });
-        });
+            ctxEstudiante.strokeStyle = "#000000"; ctxEstudiante.lineWidth = 2; ctxEstudiante.lineCap = "round"; ctxEstudiante.lineJoin = "round";
+            ctxAcudiente.strokeStyle = "#000000"; ctxAcudiente.lineWidth = 2; ctxAcudiente.lineCap = "round"; ctxAcudiente.lineJoin = "round";
+        }
+        window.addEventListener('resize', resizeCanvasesRegistro);
 
-        ['mousemove', 'touchmove'].forEach(event => {
-            canvasRegistro.addEventListener(event, (e) => {
-                if (!isDrawingReg) return;
-                e.preventDefault();
-                const pos = getPointerPosReg(e);
-                ctxRegistro.lineTo(pos.x, pos.y);
-                ctxRegistro.stroke();
-            });
-        });
+        // Eventos Estudiante
+        ['mousedown', 'touchstart'].forEach(e => canvasEstudiante.addEventListener(e, (ev) => { ev.preventDefault(); isDrawingEst = true; const r = canvasEstudiante.getBoundingClientRect(); ctxEstudiante.beginPath(); ctxEstudiante.moveTo((ev.clientX || ev.touches[0].clientX) - r.left, (ev.clientY || ev.touches[0].clientY) - r.top); }));
+        ['mousemove', 'touchmove'].forEach(e => canvasEstudiante.addEventListener(e, (ev) => { if (!isDrawingEst) return; ev.preventDefault(); const r = canvasEstudiante.getBoundingClientRect(); ctxEstudiante.lineTo((ev.clientX || ev.touches[0].clientX) - r.left, (ev.clientY || ev.touches[0].clientY) - r.top); ctxEstudiante.stroke(); }));
+        ['mouseup', 'mouseleave', 'touchend'].forEach(e => canvasEstudiante.addEventListener(e, () => { isDrawingEst = false; }));
 
-        ['mouseup', 'mouseleave', 'touchend'].forEach(event => {
-            canvasRegistro.addEventListener(event, () => { isDrawingReg = false; });
-        });
+        // Eventos Acudiente
+        ['mousedown', 'touchstart'].forEach(e => canvasAcudiente.addEventListener(e, (ev) => { ev.preventDefault(); isDrawingAcu = true; const r = canvasAcudiente.getBoundingClientRect(); ctxAcudiente.beginPath(); ctxAcudiente.moveTo((ev.clientX || ev.touches[0].clientX) - r.left, (ev.clientY || ev.touches[0].clientY) - r.top); }));
+        ['mousemove', 'touchmove'].forEach(e => canvasAcudiente.addEventListener(e, (ev) => { if (!isDrawingAcu) return; ev.preventDefault(); const r = canvasAcudiente.getBoundingClientRect(); ctxAcudiente.lineTo((ev.clientX || ev.touches[0].clientX) - r.left, (ev.clientY || ev.touches[0].clientY) - r.top); ctxAcudiente.stroke(); }));
+        ['mouseup', 'mouseleave', 'touchend'].forEach(e => canvasAcudiente.addEventListener(e, () => { isDrawingAcu = false; }));
 
-        function limpiarFirmaRegistro() {
-            ctxRegistro.clearRect(0, 0, canvasRegistro.width, canvasRegistro.height);
+        function limpiarFirmaEstudiante() {
+            ctxEstudiante.clearRect(0, 0, canvasEstudiante.width, canvasEstudiante.height);
         }
 
-        const canvasAccion = document.getElementById('signature-pad');
-        const ctxAccion = canvasAccion.getContext('2d');
-        let isDrawingAccion = false;
-
-        function resizeCanvasAccion() {
-            const rect = canvasAccion.getBoundingClientRect();
-            canvasAccion.width = rect.width;
-            canvasAccion.height = rect.height;
-            ctxAccion.strokeStyle = "#000000";
-            ctxAccion.lineWidth = 2;
-            ctxAccion.lineCap = "round";
-            ctxAccion.lineJoin = "round";
-        }
-        window.addEventListener('resize', resizeCanvasAccion);
-
-        function getPointerPosAccion(e) {
-            const rect = canvasAccion.getBoundingClientRect();
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-
-        ['mousedown', 'touchstart'].forEach(event => {
-            canvasAccion.addEventListener(event, (e) => {
-                e.preventDefault();
-                isDrawingAccion = true;
-                const pos = getPointerPosAccion(e);
-                ctxAccion.beginPath();
-                ctxAccion.moveTo(pos.x, pos.y);
-            });
-        });
-
-        ['mousemove', 'touchmove'].forEach(event => {
-            canvasAccion.addEventListener(event, (e) => {
-                if (!isDrawingAccion) return;
-                e.preventDefault();
-                const pos = getPointerPosAccion(e);
-                ctxAccion.lineTo(pos.x, pos.y);
-                ctxAccion.stroke();
-            });
-        });
-
-        ['mouseup', 'mouseleave', 'touchend'].forEach(event => {
-            canvasAccion.addEventListener(event, () => { isDrawingAccion = false; });
-        });
-
-        function limpiarFirmaAccion() {
-            ctxAccion.clearRect(0, 0, canvasAccion.width, canvasAccion.height);
+        function limpiarFirmaAcudiente() {
+            ctxAcudiente.clearRect(0, 0, canvasAcudiente.width, canvasAcudiente.height);
         }
 
         function formatearFecha(fechaStr) {
@@ -775,8 +707,8 @@
                     firstPage.drawText(usuarioActual.ciudad || 'Pereira', { x: 419, y: 585, size: fontSize, font: customFont, color: blackColor });
 
                     firstPage.drawText(destino, { x: 97, y: 553, size: 11, font: customFont, color: blackColor });
-                    firstPage.drawText(fecLlegada, { x: 322, y: 459, size: fontSizeFechas, font: customFont, color: blackColor });
-                    firstPage.drawText(fecSalida, { x: 111, y: 451, size: fontSizeFechas, font: customFont, color: blackColor });
+                    firstPage.drawText(fecSalida, { x: 78, y: 477, size: fontSizeFechas, font: customFont, color: blackColor });
+                    firstPage.drawText(fecLlegada, { x: 314, y: 483, size: fontSizeFechas, font: customFont, color: blackColor });
 
                     const consume = usuarioActual.consume_medicamentos || 'No';
                     if (consume === 'Si') {
@@ -796,15 +728,11 @@
 
                     firstPage.drawText(usuarioActual.documento_identidad || '', { x: 145, y: 106, size: fontSize, font: customFont, color: blackColor });
 
-                    const signatureImageBytes = canvasAccion.toDataURL('image/png');
-                    if (signatureImageBytes) {
-                        const pngImage = await pdfDoc.embedPng(signatureImageBytes);
-                        firstPage.drawImage(pngImage, {
-                            x: 42,
-                            y: 141,
-                            width: 95,
-                            height: 50,
-                        });
+                    if (usuarioActual.firma_estudiante) {
+                        const base64Data = usuarioActual.firma_estudiante.split(',')[1];
+                        const firmaBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                        const pngImage = await pdfDoc.embedPng(firmaBytes);
+                        firstPage.drawImage(pngImage, { x: 42, y: 141, width: 95, height: 50 });
                     }
                 } else {
                     // --- MAPEO EXACTO FORMATO MENORES DE EDAD (131-F26) ---
@@ -821,7 +749,6 @@
                     firstPage.drawText(usuarioActual.direccion_residencia || '', { x: 191, y: 599, size: fontSize, font: customFont, color: blackColor });
                     firstPage.drawText(usuarioActual.ciudad || 'Pereira', { x: 417, y: 607, size: fontSize, font: customFont, color: blackColor });
 
-                    // Datos del Acudiente
                     firstPage.drawText(usuarioActual.nombre_acudiente || '', { x: 271, y: 577, size: fontSize, font: customFont, color: blackColor });
                     firstPage.drawText(usuarioActual.cedula_acudiente || '', { x: 117, y: 559, size: fontSize, font: customFont, color: blackColor });
                     firstPage.drawText(usuarioActual.lugar_expedicion_acudiente || '', { x: 321, y: 562, size: fontSize, font: customFont, color: blackColor });
@@ -831,12 +758,10 @@
                     firstPage.drawText(usuarioActual.telefono_celular_acudiente || '', { x: 313, y: 537, size: fontSize, font: customFont, color: blackColor });
                     firstPage.drawText(usuarioActual.correo_acudiente || '', { x: 168, y: 520, size: fontSize, font: customFont, color: blackColor });
 
-                    // Destino y Fechas Dinámicas
                     firstPage.drawText(destino, { x: 125, y: 506, size: 10, font: customFont, color: blackColor });
                     firstPage.drawText(fecLlegada, { x: 322, y: 459, size: fontSizeFechas, font: customFont, color: blackColor });
-                    firstPage.drawText(fecSalida, { x: 111, y: 451, size: fontSizeFechas, font: customFont, color: blackColor });
+                    firstPage.drawText(fecSalida, { x: 81, y: 475, size: fontSizeFechas, font: customFont, color: blackColor });
 
-                    // Declaraciones y Párrafos Condicionadas correctamente
                     firstPage.drawText(usuarioActual.nombre_acudiente || '', { x: 104, y: 429, size: 9, font: customFont, color: blackColor });
                     firstPage.drawText(usuarioActual.parentesco || '', { x: 417, y: 436, size: 9, font: customFont, color: blackColor });
                     firstPage.drawText(usuarioActual.nombre_estudiante || '', { x: 132, y: 413, size: 9, font: customFont, color: blackColor });
@@ -847,7 +772,6 @@
                     firstPage.drawText(rolEstudiante, { x: 455, y: 296, size: 9, font: customFont, color: blackColor });
                     firstPage.drawText(rolEstudiante, { x: 228, y: 266, size: 9, font: customFont, color: blackColor });
 
-                    // Prescripción Médica Menores
                     const consumeM = usuarioActual.consume_medicamentos || 'No';
                     if (consumeM === 'Si') {
                         firstPage.drawText('X', { x: 448, y: 268, size: fontSize, font: customFont, color: blackColor });
@@ -856,20 +780,14 @@
                         firstPage.drawText('X', { x: 485, y: 273, size: fontSize, font: customFont, color: blackColor });
                     }
 
-                    // Cédula del acudiente al pie de página
                     firstPage.drawText(usuarioActual.cedula_acudiente || '', { x: 174, y: 165, size: fontSize, font: customFont, color: blackColor });
 
-                    // Inserción de la firma guardada del acudiente
+                    // Se inserta la firma del acudiente en el formato legal de menores
                     if (usuarioActual.firma_acudiente) {
                         const base64Data = usuarioActual.firma_acudiente.split(',')[1];
                         const firmaBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
                         const pngImage = await pdfDoc.embedPng(firmaBytes);
-                        firstPage.drawImage(pngImage, {
-                            x: 80,
-                            y: 195,
-                            width: 95,
-                            height: 45,
-                        });
+                        firstPage.drawImage(pngImage, { x: 80, y: 195, width: 95, height: 45 });
                     }
                 }
 
